@@ -584,20 +584,30 @@ export async function deleteMonthlyBudgetItem(monthlyBudgetItemId) {
   return prisma.financeOperationsBudgetMonthly.delete({ where: { monthlyBudgetItemId: Number(monthlyBudgetItemId) } });
 }
 
-async function computeActualCents(categoryId, startDate, endDate) {
-  const conditions = ["type = 'expense'", "transactionDate >= ?", "transactionDate <= ?"];
-  const params = [startDate, endDate];
-  if (categoryId) {
-    conditions.push("categoryId = ?");
-    params.push(categoryId);
-  }
+// Aggregates the month's expenses once and returns a lookup, rather than
+// issuing one SUM query per budget row (which exhausted the connection pool).
+// A budget row with no category keeps its previous meaning: all expenses.
+async function buildActualCentsLookup(startDate, endDate) {
   const rows = await queryDb(
-    `SELECT COALESCE(SUM(amountCents), 0) AS actualCents
+    `SELECT categoryId, COALESCE(SUM(amountCents), 0) AS actualCents
        FROM financeTransactions
-      WHERE ${conditions.join(" AND ")}`,
-    params
+      WHERE type = 'expense' AND transactionDate >= ? AND transactionDate <= ?
+      GROUP BY categoryId`,
+    [startDate, endDate]
   );
-  return rows[0]?.actualCents || 0;
+
+  const byCategoryId = new Map();
+  let totalCents = 0;
+  for (const row of rows) {
+    const cents = Number(row.actualCents) || 0;
+    totalCents += cents;
+    if (row.categoryId !== null && row.categoryId !== undefined) {
+      byCategoryId.set(row.categoryId, cents);
+    }
+  }
+
+  return (categoryId) =>
+    categoryId ? byCategoryId.get(categoryId) || 0 : totalCents;
 }
 
 export async function getBudgetVsActual(year, month) {
@@ -615,53 +625,50 @@ export async function getBudgetVsActual(year, month) {
 
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
+  const actualCentsFor = await buildActualCentsLookup(startDate, endDate);
 
-  const templateResults = await Promise.all(
-    templateEntries.map(async (entry) => {
-      const override = overrideByBudgetItemId.get(entry.budgetId) || null;
-      const appliesThisMonth = entry.cadence !== "annual" || entry.annualMonth === Number(month);
-      const monthlyBudgetCents = override
-        ? override.monthlyBudgetCents
-        : (appliesThisMonth ? entry.monthlyBudgetCents : 0);
-      const actualCents = await computeActualCents(entry.categoryId, startDate, endDate);
+  const templateResults = templateEntries.map((entry) => {
+    const override = overrideByBudgetItemId.get(entry.budgetId) || null;
+    const appliesThisMonth = entry.cadence !== "annual" || entry.annualMonth === Number(month);
+    const monthlyBudgetCents = override
+      ? override.monthlyBudgetCents
+      : (appliesThisMonth ? entry.monthlyBudgetCents : 0);
+    const actualCents = actualCentsFor(entry.categoryId);
 
-      return {
-        ...entry,
-        label: normaliseBudgetLabel(entry.label),
-        monthlyBudgetCents,
-        templateMonthlyBudgetCents: entry.monthlyBudgetCents,
-        isOverridden: Boolean(override),
-        monthlyBudgetItemId: override?.monthlyBudgetItemId || null,
-        isOneOff: false,
-        actualCents,
-        varianceCents: monthlyBudgetCents - actualCents,
-      };
-    })
-  );
+    return {
+      ...entry,
+      label: normaliseBudgetLabel(entry.label),
+      monthlyBudgetCents,
+      templateMonthlyBudgetCents: entry.monthlyBudgetCents,
+      isOverridden: Boolean(override),
+      monthlyBudgetItemId: override?.monthlyBudgetItemId || null,
+      isOneOff: false,
+      actualCents,
+      varianceCents: monthlyBudgetCents - actualCents,
+    };
+  });
 
-  const oneOffResults = await Promise.all(
-    oneOffRows.map(async (row) => {
-      const actualCents = await computeActualCents(row.categoryId, startDate, endDate);
-      return {
-        budgetId: null,
-        monthlyBudgetItemId: row.monthlyBudgetItemId,
-        categoryId: row.categoryId,
-        category: row.category,
-        label: normaliseBudgetLabel(row.label),
-        publicDescription: row.publicDescription,
-        monthlyBudgetCents: row.monthlyBudgetCents,
-        templateMonthlyBudgetCents: null,
-        currency: row.currency,
-        iconName: row.iconName,
-        iconImageUrl: row.iconImageUrl,
-        notes: row.notes,
-        isOverridden: false,
-        isOneOff: true,
-        actualCents,
-        varianceCents: row.monthlyBudgetCents - actualCents,
-      };
-    })
-  );
+  const oneOffResults = oneOffRows.map((row) => {
+    const actualCents = actualCentsFor(row.categoryId);
+    return {
+      budgetId: null,
+      monthlyBudgetItemId: row.monthlyBudgetItemId,
+      categoryId: row.categoryId,
+      category: row.category,
+      label: normaliseBudgetLabel(row.label),
+      publicDescription: row.publicDescription,
+      monthlyBudgetCents: row.monthlyBudgetCents,
+      templateMonthlyBudgetCents: null,
+      currency: row.currency,
+      iconName: row.iconName,
+      iconImageUrl: row.iconImageUrl,
+      notes: row.notes,
+      isOverridden: false,
+      isOneOff: true,
+      actualCents,
+      varianceCents: row.monthlyBudgetCents - actualCents,
+    };
+  });
 
   return [...templateResults, ...oneOffResults];
 }

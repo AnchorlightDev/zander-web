@@ -1261,6 +1261,18 @@ export async function removeTicketParticipantPermissions(
     }
 }
 
+// Discord codes meaning "the thing you are pointing at no longer exists"
+// (participant left the guild, role/channel deleted, stale overwrite cache).
+// These are expected for long-lived tickets and must not abort the permission
+// sync for the remaining participants.
+const MISSING_TARGET_DISCORD_CODES = new Set([
+    10003, // Unknown Channel
+    10007, // Unknown Member
+    10009, // Unknown Overwrite
+    10011, // Unknown Role
+    10013, // Unknown User
+]);
+
 export async function applyTicketParticipantPermissions(client, ticketId) {
     const hasChannelColumn = await ensureDiscordChannelColumn();
     const hasTable = await ensureTicketParticipantTable();
@@ -1314,7 +1326,7 @@ export async function applyTicketParticipantPermissions(client, ticketId) {
                         { type: OverwriteType.Member },
                     )
                     .catch((error) => {
-                        console.error("applyTicketParticipantPermissions: failed to grant user overwrite", {
+                        const details = {
                             ticketId,
                             channelId: channel.id,
                             targetUserId: discordId,
@@ -1322,7 +1334,15 @@ export async function applyTicketParticipantPermissions(client, ticketId) {
                             discordCode: error?.code,
                             status: error?.status,
                             message: error?.message,
-                        });
+                        };
+                        if (MISSING_TARGET_DISCORD_CODES.has(error?.code)) {
+                            console.warn(
+                                "applyTicketParticipantPermissions: skipping user overwrite for missing target",
+                                details,
+                            );
+                            return;
+                        }
+                        console.error("applyTicketParticipantPermissions: failed to grant user overwrite", details);
                         throw error;
                     }),
             );
@@ -1353,7 +1373,7 @@ export async function applyTicketParticipantPermissions(client, ticketId) {
                         { type: OverwriteType.Role },
                     )
                     .catch((error) => {
-                        console.error("applyTicketParticipantPermissions: failed to grant role overwrite", {
+                        const details = {
                             ticketId,
                             channelId: channel.id,
                             targetRoleId: roleId,
@@ -1366,7 +1386,15 @@ export async function applyTicketParticipantPermissions(client, ticketId) {
                             discordCode: error?.code,
                             status: error?.status,
                             message: error?.message,
-                        });
+                        };
+                        if (MISSING_TARGET_DISCORD_CODES.has(error?.code)) {
+                            console.warn(
+                                "applyTicketParticipantPermissions: skipping role overwrite for missing target",
+                                details,
+                            );
+                            return;
+                        }
+                        console.error("applyTicketParticipantPermissions: failed to grant role overwrite", details);
                         throw error;
                     }),
             );
