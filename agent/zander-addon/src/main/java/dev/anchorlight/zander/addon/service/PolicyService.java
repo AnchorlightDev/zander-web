@@ -19,12 +19,17 @@ public class PolicyService {
         this.plugin = plugin;
     }
 
+    /// The live zander-web API, without a trailing slash.
+    private String apiBase() {
+        String url = plugin.getConfig().getString("api-url", "");
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
     public CompletableFuture<PolicyConfig> fetchPolicyUrls() {
         return CompletableFuture.supplyAsync(() -> {
-            String apiUrl = plugin.getConfig().getString("api-url");
             try {
                 Request req = Request.builder()
-                        .setURL(apiUrl + "/api/config/policy")
+                        .setURL(apiBase() + "/api/config/policy")
                         .setMethod(Request.Method.GET)
                         .build();
 
@@ -70,10 +75,9 @@ public class PolicyService {
 
     public CompletableFuture<SocialConfig> fetchSocialLinks() {
         return CompletableFuture.supplyAsync(() -> {
-            String apiUrl = plugin.getConfig().getString("api-url");
             try {
                 Request req = Request.builder()
-                        .setURL(apiUrl + "/api/config/social")
+                        .setURL(apiBase() + "/api/config/social")
                         .setMethod(Request.Method.GET)
                         .build();
 

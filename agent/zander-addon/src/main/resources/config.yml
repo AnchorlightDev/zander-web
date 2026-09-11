@@ -1,7 +1,8 @@
 # Zander Addon Configuration
 
 # --- Plugin Settings ---
-# The base URL for the API
+# The base URL of the live zander-web API. Policy links, social links, rewards and
+# bridge tasks are all fetched from here.
 api-url: "https://craftingforchrist.net"
 
 # API key for authenticated endpoints (x-access-token header)
@@ -19,12 +20,6 @@ command-bridge:
 # Polls for queued server-side console tasks on a timer
 bridge:
   enabled: true
-
-# --- Policy API Server ---
-# Hosts a local HTTP endpoint for policy/social config — disable if not needed
-api-server:
-  enabled: false
-  port: 8080
 
 # --- Policy Book ---
 policy-book:

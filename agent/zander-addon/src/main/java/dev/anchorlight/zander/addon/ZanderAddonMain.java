@@ -2,7 +2,6 @@ package dev.anchorlight.zander.addon;
 
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
-import dev.anchorlight.zander.addon.api.PolicyApiServer;
 import dev.anchorlight.zander.addon.commands.FreezeCommand;
 import dev.anchorlight.zander.addon.commands.PolicyCommand;
 import dev.anchorlight.zander.addon.commands.SocialCommand;
@@ -27,7 +26,6 @@ public class ZanderAddonMain extends JavaPlugin {
     private StoreCommandService storeCommandService;
     @Getter
     private BridgeService bridgeService;
-    private PolicyApiServer apiServer;
 
     @Override
     public void onEnable() {
@@ -39,11 +37,6 @@ public class ZanderAddonMain extends JavaPlugin {
         this.freezeService = new FreezeService();
         this.storeCommandService = new StoreCommandService(this);
         this.bridgeService = new BridgeService(this);
-
-        if (getConfig().getBoolean("api-server.enabled", false)) {
-            this.apiServer = new PolicyApiServer(this);
-            this.apiServer.start();
-        }
 
         PolicyGUI policyGUI = new PolicyGUI(this);
         SocialGUI socialGUI = new SocialGUI(this);
@@ -72,9 +65,6 @@ public class ZanderAddonMain extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (this.apiServer != null) {
-            this.apiServer.stop();
-        }
         getLogger().info("Zander Addon has been disabled.");
     }
 }

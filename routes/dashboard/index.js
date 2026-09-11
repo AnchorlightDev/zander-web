@@ -1,5 +1,6 @@
 import { getMenuGroups } from "../../admin/pageRegistry.js";
 import { getUserPermissions } from "../../controllers/userController.js";
+import { isSessionPermissionsInvalidated } from "../../controllers/rankSyncController.js";
 
 import dashboardSiteRoute from "./dashboard.js";
 import dashboardServersSiteRoute from "./servers.js";
@@ -32,13 +33,15 @@ export default function dashboardSiteRoutes(
 ) {
   const PERMISSION_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
-  async function refreshDashboardSessionPermissions(req) {
+  async function refreshSessionPermissions(req) {
     if (!req.session?.user?.userId) {
       return;
     }
 
     const lastRefreshedAt = Number(req.session.user.permissionsRefreshedAt || 0);
-    const isStale = !lastRefreshedAt || (Date.now() - lastRefreshedAt) > PERMISSION_REFRESH_INTERVAL_MS;
+    const isStale = !lastRefreshedAt
+      || (Date.now() - lastRefreshedAt) > PERMISSION_REFRESH_INTERVAL_MS
+      || isSessionPermissionsInvalidated(req.session.user.uuid, lastRefreshedAt);
     if (!isStale) {
       return;
     }
@@ -59,15 +62,21 @@ export default function dashboardSiteRoutes(
   }
 
   /**
-   * Attach admin menu data to every /dashboard/* request so that
-   * _sidebar.ejs can read it from req.adminMenuGroups without requiring
-   * each route handler to pass it explicitly.
+   * Keep every logged-in session's permissions current (rank changes made on the website apply on
+   * the next request; changes made elsewhere within PERMISSION_REFRESH_INTERVAL_MS), and attach
+   * admin menu data to every /dashboard/* request so that _sidebar.ejs can read it from
+   * req.adminMenuGroups without requiring each route handler to pass it explicitly.
    *
    * This hook runs after session parsing, so req.session.user is available.
    */
   app.addHook("preHandler", async (req) => {
+    try {
+      await refreshSessionPermissions(req);
+    } catch (error) {
+      // Keep serving with the cached permissions rather than failing the request.
+      console.error("[PERMISSIONS] Failed to refresh session permissions:", error);
+    }
     if (req.url && req.url.startsWith("/dashboard")) {
-      await refreshDashboardSessionPermissions(req);
       const perms = req.session?.user?.permissions ?? [];
       req.adminMenuGroups = getMenuGroups(perms, features);
     }

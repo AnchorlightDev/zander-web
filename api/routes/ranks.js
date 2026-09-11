@@ -4,6 +4,7 @@ import {
   getUserPermissions,
 } from "../../controllers/userController.js";
 import { luckpermsDb } from "../../controllers/databaseController.js";
+import { syncAllRanks, syncUserRanks } from "../../controllers/rankSyncController.js";
 
 const RANK_VIEW = "ranks";
 const USER_RANKS_VIEW = "userRanks";
@@ -425,6 +426,7 @@ export default function rankApiRoute(app, config, db, features, lang) {
       await updateGroupNode(rankSlug, "meta.donator", donatorFlag);
       await updateGroupNode(rankSlug, "meta.rankbadgecolour", sanitizedBadge);
       await updateGroupNode(rankSlug, "meta.ranktextcolour", sanitizedText);
+      await syncAllRanks();
 
       const [updatedRank] = await queryLuckPermsDb(
         `SELECT
@@ -555,6 +557,8 @@ export default function rankApiRoute(app, config, db, features, lang) {
         );
       }
 
+      await syncUserRanks(player.uuid);
+
       return res.send({
         success: true,
         message: "Rank assigned successfully.",
@@ -598,6 +602,8 @@ export default function rankApiRoute(app, config, db, features, lang) {
             AND permission LIKE CONCAT('meta.group.', ?, '.title.%')`,
         [player.uuid, rankSlug]
       );
+
+      await syncUserRanks(player.uuid);
 
       return res.send({
         success: true,

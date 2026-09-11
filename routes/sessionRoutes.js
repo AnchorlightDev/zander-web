@@ -119,6 +119,7 @@ export default function sessionSiteRoute(
       uuid: userLoginData.uuid,
       ranks: userRanks,
       permissions: userPermissionData,
+      permissionsRefreshedAt: Date.now(),
       isStaff,
     };
 
