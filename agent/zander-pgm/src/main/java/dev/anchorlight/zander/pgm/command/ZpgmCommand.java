@@ -66,7 +66,7 @@ public class ZpgmCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("Â§6=== ZanderPGM Status ===");
         sender.sendMessage("Â§7Server ID: Â§f" + cfg.serverId);
         sender.sendMessage("Â§7API base: Â§f" + cfg.baseUrl);
-        sender.sendMessage("Â§7REST reachable: " + yn(plugin.health().isRestReachable()));
+        sender.sendMessage("Â§7REST reachable: " + yn(plugin.health().isReachable()));
         sender.sendMessage("Â§7WebSocket: " + yn(plugin.ws().isConnected()));
         sender.sendMessage("Â§7Queued events: Â§f" + plugin.queue().size()
                 + " Â§7(dropped: " + plugin.queue().droppedCount() + ")");

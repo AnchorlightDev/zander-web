@@ -1,5 +1,6 @@
 package dev.anchorlight.zander.hub.gui;
 
+import dev.anchorlight.stonelib.menu.SlotLayout;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -105,7 +106,7 @@ public class HubCompassItem implements Listener {
     private void renderLoading(Inventory inventory, List<CompassServerEntry> configured) {
         Map<String, Integer> explicitSlots = explicitSlots(configured);
         List<String> ids = configured.stream().map(CompassServerEntry::id).toList();
-        for (CompassSlotCalculator.SlotAssignment assignment : CompassSlotCalculator.assign(ids, explicitSlots, inventory.getSize())) {
+        for (SlotLayout.Assignment assignment : SlotLayout.assign(ids, explicitSlots, inventory.getSize())) {
             CompassServerEntry entry = configured.stream().filter(e -> e.id().equals(assignment.entryId())).findFirst().orElseThrow();
             inventory.setItem(assignment.slot(), loadingIcon(entry));
         }
@@ -124,7 +125,7 @@ public class HubCompassItem implements Listener {
         inventory.clear();
         Map<String, Integer> explicitSlots = explicitSlots(configured);
         List<String> ids = configured.stream().map(CompassServerEntry::id).toList();
-        for (CompassSlotCalculator.SlotAssignment assignment : CompassSlotCalculator.assign(ids, explicitSlots, inventory.getSize())) {
+        for (SlotLayout.Assignment assignment : SlotLayout.assign(ids, explicitSlots, inventory.getSize())) {
             CompassServerEntry entry = configured.stream().filter(e -> e.id().equals(assignment.entryId())).findFirst().orElseThrow();
             inventory.setItem(assignment.slot(), buildIcon(entry, "UNAVAILABLE", null));
         }
@@ -149,7 +150,7 @@ public class HubCompassItem implements Listener {
         }
 
         Map<String, Integer> explicitSlots = explicitSlots(configured);
-        for (CompassSlotCalculator.SlotAssignment assignment : CompassSlotCalculator.assign(visibleIds, explicitSlots, inventory.getSize())) {
+        for (SlotLayout.Assignment assignment : SlotLayout.assign(visibleIds, explicitSlots, inventory.getSize())) {
             CompassServerEntry entry = configured.stream().filter(e -> e.id().equals(assignment.entryId())).findFirst().orElseThrow();
             BridgeMessage.ServerInfo info = byId.get(entry.id());
             String state = resolveState(info);

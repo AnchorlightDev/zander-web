@@ -1,5 +1,7 @@
 package dev.anchorlight.zander.hub.portal;
 
+import dev.anchorlight.stonelib.display.ArgbColours;
+import dev.anchorlight.stonelib.region.Cuboid;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -85,7 +87,7 @@ public class PortalRepository {
         if (min == null || max == null) {
             throw new IllegalArgumentException("region missing min/max");
         }
-        PortalRegion region = new PortalRegion(world,
+        Cuboid region = new Cuboid(world,
                 min.getInt("x"), min.getInt("y"), min.getInt("z"),
                 max.getInt("x"), max.getInt("y"), max.getInt("z"));
 
@@ -119,7 +121,7 @@ public class PortalRepository {
         PortalAppearance.Style style = PortalAppearance.parseStyle(rawStyle)
                 .orElseThrow(() -> new IllegalArgumentException("unknown appearance style '" + rawStyle + "'"));
         String rawColour = section.getString("colour");
-        int argb = rawColour == null ? PortalAppearance.DEFAULT_TINT : PortalAppearance.parseColour(rawColour)
+        int argb = rawColour == null ? PortalAppearance.DEFAULT_TINT : ArgbColours.parse(rawColour)
                 .orElseThrow(() -> new IllegalArgumentException("invalid appearance colour '" + rawColour + "'"));
         return new PortalAppearance(style, argb);
     }
@@ -198,7 +200,7 @@ public class PortalRepository {
             yaml.set(base + ".messages.success", portal.successMessage());
             yaml.set(base + ".messages.denied", portal.deniedMessage());
             yaml.set(base + ".appearance.style", portal.appearance().style().name());
-            yaml.set(base + ".appearance.colour", PortalAppearance.formatColour(portal.appearance().argb()));
+            yaml.set(base + ".appearance.colour", ArgbColours.format(portal.appearance().argb()));
         }
 
         try {

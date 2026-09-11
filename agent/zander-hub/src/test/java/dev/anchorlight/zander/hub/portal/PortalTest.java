@@ -1,11 +1,13 @@
 package dev.anchorlight.zander.hub.portal;
 
+import dev.anchorlight.stonelib.region.Cuboid;
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class PortalTest {
-    private PortalRegion region() {
-        return new PortalRegion("world", 10, 120, 5, 12, 124, 5);
+    private Cuboid region() {
+        return new Cuboid("world", 10, 120, 5, 12, 124, 5);
     }
 
     private PortalDestination destination() {

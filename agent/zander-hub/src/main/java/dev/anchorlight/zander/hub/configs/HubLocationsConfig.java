@@ -5,11 +5,11 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.isValidDouble;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.isValidPitch;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.isValidWorld;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.isValidYaw;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.validateConfig;
+import static dev.anchorlight.stonelib.ConfigValidator.isValidDouble;
+import static dev.anchorlight.stonelib.ConfigValidator.isValidPitch;
+import static dev.anchorlight.stonelib.ConfigValidator.isValidWorld;
+import static dev.anchorlight.stonelib.ConfigValidator.isValidYaw;
+import static dev.anchorlight.stonelib.ConfigValidator.validateConfig;
 
 /**
  * Manages hub locations for the plugin, and their persistence.
@@ -40,12 +40,12 @@ public class HubLocationsConfig {
         String fieldPitch = "hub.pitch";
         String fieldYaw = "hub.yaw";
 
-        validateConfig(config, fieldWorld, isValidWorld, defaultSpawn.getWorld().getName());
-        validateConfig(config, fieldX, isValidDouble, defaultSpawn.getX());
-        validateConfig(config, fieldY, isValidDouble, defaultSpawn.getY());
-        validateConfig(config, fieldZ, isValidDouble, defaultSpawn.getZ());
-        validateConfig(config, fieldPitch, isValidPitch, defaultSpawn.getPitch());
-        validateConfig(config, fieldYaw, isValidYaw, defaultSpawn.getYaw());
+        validateConfig(plugin, config, fieldWorld, isValidWorld, defaultSpawn.getWorld().getName());
+        validateConfig(plugin, config, fieldX, isValidDouble, defaultSpawn.getX());
+        validateConfig(plugin, config, fieldY, isValidDouble, defaultSpawn.getY());
+        validateConfig(plugin, config, fieldZ, isValidDouble, defaultSpawn.getZ());
+        validateConfig(plugin, config, fieldPitch, isValidPitch, defaultSpawn.getPitch());
+        validateConfig(plugin, config, fieldYaw, isValidYaw, defaultSpawn.getYaw());
 
         plugin.saveConfig(); // * save to external 'config.yml'
 

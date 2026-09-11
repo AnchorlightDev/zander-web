@@ -1,17 +1,17 @@
 package dev.anchorlight.zander.hub.portal;
 
-import dev.anchorlight.zander.hub.protection.PortalBlockProtection;
-import net.kyori.adventure.text.Component;
+import dev.anchorlight.stonelib.block.SafeBlocks;
+import dev.anchorlight.stonelib.display.TintPanel;
+import dev.anchorlight.stonelib.region.Cuboid;
+import dev.anchorlight.stonelib.region.RegionIndex;
 import org.bukkit.Axis;
 import org.bukkit.Bukkit;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.PortalType;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Orientable;
-import org.bukkit.entity.Display;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -19,11 +19,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.entity.EntityPortalEnterEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
-import org.bukkit.util.Transformation;
-import org.joml.AxisAngle4f;
-import org.joml.Vector3f;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,24 +32,18 @@ import java.util.Map;
  * updates that would break them are cancelled, and vanilla Nether travel from them is
  * suppressed so only the portal's own destination fires.
  * <p>
- * {@code TINT} portals are two non-persistent text displays (one per face) whose
- * backgrounds form a translucent coloured panel. They vanish with their chunk and are
- * respawned when it loads again, so nothing is ever left behind in the world save.
+ * {@code TINT} portals are a {@link TintPanel}. Its displays vanish with their chunk and
+ * are respawned when it loads again, so nothing is ever left behind in the world save.
  */
 public class PortalRenderer implements Listener {
     /// Upper bound on blocks a single nether-style portal may fill.
     public static final long MAX_NETHER_VOLUME = 4096;
 
-    /// Gap between the two tint panels so they never z-fight.
-    private static final double PANEL_OFFSET = 0.01;
-    /// Keeps the far panel's anchor inside the region's own chunk.
-    private static final double ANCHOR_EPSILON = 0.001;
-
     private final PortalService portalService;
-    private final PortalSpatialIndex index;
+    private final RegionIndex<Portal> index;
     private final Map<String, List<TextDisplay>> tintPanels = new HashMap<>();
 
-    public PortalRenderer(PortalService portalService, PortalSpatialIndex index) {
+    public PortalRenderer(PortalService portalService, RegionIndex<Portal> index) {
         this.portalService = portalService;
         this.index = index;
     }
@@ -91,60 +81,26 @@ public class PortalRenderer implements Listener {
         }
     }
 
-    /// Counts blocks in the region that a nether fill would leave untouched because they're occupied.
-    public int countOccupied(PortalRegion region) {
+    /// Counts blocks in the region that a nether fill leaves untouched because they're occupied.
+    public int countOccupied(Cuboid region) {
         World world = Bukkit.getWorld(region.world());
-        if (world == null) {
-            return 0;
-        }
-        int occupied = 0;
-        for (int x = region.minX(); x <= region.maxX(); x++) {
-            for (int y = region.minY(); y <= region.maxY(); y++) {
-                for (int z = region.minZ(); z <= region.maxZ(); z++) {
-                    Material type = world.getBlockAt(x, y, z).getType();
-                    if (PortalBlockProtection.wouldOverwrite(type, Material.NETHER_PORTAL)) {
-                        occupied++;
-                    }
-                }
-            }
-        }
-        return occupied;
+        return world == null ? 0 : SafeBlocks.countOccupied(world, region, Material.NETHER_PORTAL);
     }
 
-    private void fillNether(PortalRegion region) {
+    private void fillNether(Cuboid region) {
         World world = Bukkit.getWorld(region.world());
         if (world == null || region.volume() > MAX_NETHER_VOLUME) {
             return;
         }
         Orientable data = (Orientable) Material.NETHER_PORTAL.createBlockData();
         data.setAxis(region.sizeX() >= region.sizeZ() ? Axis.X : Axis.Z);
-
-        for (int x = region.minX(); x <= region.maxX(); x++) {
-            for (int y = region.minY(); y <= region.maxY(); y++) {
-                for (int z = region.minZ(); z <= region.maxZ(); z++) {
-                    Block block = world.getBlockAt(x, y, z);
-                    if (!PortalBlockProtection.wouldOverwrite(block.getType(), Material.NETHER_PORTAL)) {
-                        block.setBlockData(data, false);
-                    }
-                }
-            }
-        }
+        SafeBlocks.fill(world, region, data);
     }
 
-    private void clearNether(PortalRegion region) {
+    private void clearNether(Cuboid region) {
         World world = Bukkit.getWorld(region.world());
-        if (world == null || region.volume() > MAX_NETHER_VOLUME) {
-            return;
-        }
-        for (int x = region.minX(); x <= region.maxX(); x++) {
-            for (int y = region.minY(); y <= region.maxY(); y++) {
-                for (int z = region.minZ(); z <= region.maxZ(); z++) {
-                    Block block = world.getBlockAt(x, y, z);
-                    if (block.getType() == Material.NETHER_PORTAL) {
-                        block.setType(Material.AIR, false);
-                    }
-                }
-            }
+        if (world != null && region.volume() <= MAX_NETHER_VOLUME) {
+            SafeBlocks.clear(world, region, Material.NETHER_PORTAL);
         }
     }
 
@@ -156,53 +112,13 @@ public class PortalRenderer implements Listener {
     }
 
     private void spawnTint(Portal portal) {
-        PortalRegion region = portal.region();
-        World world = Bukkit.getWorld(region.world());
-        if (world == null) {
+        World world = Bukkit.getWorld(portal.region().world());
+        // Only spawn into loaded chunks; ChunkLoadEvent retries once they are.
+        if (world == null || !TintPanel.anchorsLoaded(world, portal.region())) {
             return;
         }
-
-        // A text display's background spans x in [-0.05, 0.075] and y in [0, 0.25] blocks at scale 1;
-        // scaling by (8w, 4h) and shifting by 0.4w maps it exactly onto [0, w] x [0, h].
-        List<Location> anchors = new ArrayList<>(2);
-        int width;
-        if (region.sizeX() >= region.sizeZ()) {
-            width = region.sizeX();
-            double z = region.minZ() + region.sizeZ() / 2.0;
-            anchors.add(new Location(world, region.minX(), region.minY(), z + PANEL_OFFSET, 0f, 0f));
-            anchors.add(new Location(world, region.maxX() + 1 - ANCHOR_EPSILON, region.minY(), z - PANEL_OFFSET, 180f, 0f));
-        } else {
-            width = region.sizeZ();
-            double x = region.minX() + region.sizeX() / 2.0;
-            anchors.add(new Location(world, x - PANEL_OFFSET, region.minY(), region.minZ(), 90f, 0f));
-            anchors.add(new Location(world, x + PANEL_OFFSET, region.minY(), region.maxZ() + 1 - ANCHOR_EPSILON, -90f, 0f));
-        }
-
-        // Only spawn into loaded chunks; ChunkLoadEvent retries once the rest are loaded.
-        for (Location anchor : anchors) {
-            if (!world.isChunkLoaded(anchor.getBlockX() >> 4, anchor.getBlockZ() >> 4)) {
-                return;
-            }
-        }
-
-        int height = region.sizeY();
-        Color colour = Color.fromARGB(portal.appearance().argb());
-        List<TextDisplay> panels = new ArrayList<>(anchors.size());
-        for (Location anchor : anchors) {
-            panels.add(world.spawn(anchor, TextDisplay.class, panel -> {
-                panel.setPersistent(false);
-                panel.text(Component.space());
-                panel.setDefaultBackground(false);
-                panel.setBackgroundColor(colour);
-                panel.setShadowed(false);
-                panel.setBillboard(Display.Billboard.FIXED);
-                panel.setBrightness(new Display.Brightness(15, 15));
-                panel.setTransformation(new Transformation(
-                        new Vector3f(0.4f * width, 0f, 0f), new AxisAngle4f(),
-                        new Vector3f(8f * width, 4f * height, 1f), new AxisAngle4f()));
-            }));
-        }
-        tintPanels.put(PortalIdValidator.normalise(portal.id()), panels);
+        tintPanels.put(PortalIdValidator.normalise(portal.id()),
+                TintPanel.spawn(world, portal.region(), portal.appearance().argb()));
     }
 
     private boolean tintIntact(Portal portal) {
@@ -211,8 +127,8 @@ public class PortalRenderer implements Listener {
     }
 
     private boolean isNetherPortalBlock(World world, int x, int y, int z) {
-        for (Portal portal : index.candidatesFor(world.getName(), x >> 4, z >> 4)) {
-            if (portal.appearance().style() == PortalAppearance.Style.NETHER && portal.region().contains(x, y, z)) {
+        for (Portal portal : index.allAt(world.getName(), x, y, z)) {
+            if (portal.appearance().style() == PortalAppearance.Style.NETHER) {
                 return true;
             }
         }

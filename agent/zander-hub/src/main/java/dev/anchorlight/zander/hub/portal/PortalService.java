@@ -1,5 +1,7 @@
 package dev.anchorlight.zander.hub.portal;
 
+import dev.anchorlight.stonelib.region.RegionIndex;
+
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -11,7 +13,7 @@ import java.util.Set;
 /**
  * Runtime-authoritative view of portals: mediates between the persisted store
  * ({@link PortalRepository}) and the lookup structure used by movement detection
- * ({@link PortalSpatialIndex}). All mutation methods persist and re-index before returning.
+ * ({@link RegionIndex<Portal>}). All mutation methods persist and re-index before returning.
  */
 public class PortalService {
     /// Notified after a portal is added, changed, or removed ({@code before} or {@code after} is null).
@@ -20,11 +22,11 @@ public class PortalService {
     }
 
     private final PortalRepository repository;
-    private final PortalSpatialIndex index;
+    private final RegionIndex<Portal> index;
     private Map<String, Portal> portals;
     private ChangeListener changeListener = (before, after) -> { };
 
-    public PortalService(PortalRepository repository, PortalSpatialIndex index) {
+    public PortalService(PortalRepository repository, RegionIndex<Portal> index) {
         this.repository = repository;
         this.index = index;
         this.portals = repository.load();

@@ -1,17 +1,16 @@
 package dev.anchorlight.zander.hub.bridge;
 
+import dev.anchorlight.stonelib.messaging.request.PendingRequests;
 import org.bukkit.entity.Player;
 
-import java.util.Map;
-import java.util.UUID;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * Sends {@code zander:hub} bridge requests and resolves the matching response by
- * request id. Replaces the legacy BungeeCord-channel {@code ProxyMessaging}/
- * {@code PluginMessageChannel} pair.
+ * request id, using StoneLib's {@link PendingRequests} for correlation and timeouts.
+ * Replaces the legacy BungeeCord-channel {@code ProxyMessaging}/{@code PluginMessageChannel} pair.
  */
 public class BridgeClient {
     @FunctionalInterface
@@ -20,44 +19,28 @@ public class BridgeClient {
     }
 
     private final Sender sender;
-    private final long timeoutMs;
-    private final Map<String, CompletableFuture<BridgeMessage>> pending = new ConcurrentHashMap<>();
+    private final PendingRequests<BridgeMessage> pending;
 
     public BridgeClient(Sender sender, long timeoutMs) {
         this.sender = sender;
-        this.timeoutMs = timeoutMs;
+        this.pending = new PendingRequests<>(Duration.ofMillis(timeoutMs));
     }
 
-    private String newRequestId() {
-        return UUID.randomUUID().toString();
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T extends BridgeMessage> CompletableFuture<T> send(Player player, BridgeMessage request) {
-        String requestId = request.requestId();
-        CompletableFuture<BridgeMessage> future = new CompletableFuture<>();
-        pending.put(requestId, future);
-        try {
-            sender.send(player, BridgeCodec.encode(request));
-        } catch (RuntimeException e) {
-            future.completeExceptionally(e);
-        }
-        return (CompletableFuture<T>) future
-                .orTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-                .whenComplete((result, error) -> pending.remove(requestId));
+    private <T extends BridgeMessage> CompletableFuture<T> send(Player player, Function<String, BridgeMessage> request) {
+        return pending.send(requestId -> sender.send(player, BridgeCodec.encode(request.apply(requestId))));
     }
 
     public CompletableFuture<BridgeMessage.ServerListResponse> requestServerList(Player player) {
-        return send(player, new BridgeMessage.ServerListRequest(newRequestId()));
+        return send(player, BridgeMessage.ServerListRequest::new);
     }
 
     public CompletableFuture<BridgeMessage.PlayerCurrentServerResponse> requestPlayerCurrentServer(Player player) {
-        return send(player, new BridgeMessage.PlayerCurrentServerRequest(newRequestId()));
+        return send(player, BridgeMessage.PlayerCurrentServerRequest::new);
     }
 
     /** Resolves with whichever of ConnectStarted/ConnectDenied/ConnectFailed the proxy replies with. */
     public CompletableFuture<BridgeMessage> sendConnectRequest(Player player, String portalId, String serverId) {
-        return send(player, new BridgeMessage.ConnectRequest(newRequestId(), portalId, serverId));
+        return send(player, requestId -> new BridgeMessage.ConnectRequest(requestId, portalId, serverId));
     }
 
     /** Feed a raw plugin-message payload received on the {@code zander:hub} channel. */
@@ -68,9 +51,11 @@ public class BridgeClient {
         } catch (BridgeProtocolException e) {
             return; // malformed inbound message from the proxy; nothing safe to correlate
         }
-        CompletableFuture<BridgeMessage> future = pending.get(message.requestId());
-        if (future != null) {
-            future.complete(message);
-        }
+        pending.complete(message.requestId(), message);
+    }
+
+    /** Fails every in-flight request, for plugin shutdown. */
+    public void cancelAll() {
+        pending.cancelAll();
     }
 }

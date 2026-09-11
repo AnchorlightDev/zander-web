@@ -10,7 +10,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import dev.anchorlight.zander.hub.ZanderHubMain;
-import dev.anchorlight.zander.hub.utils.ItemBuilder;
+import dev.anchorlight.stonelib.ItemBuilder;
 
 public class NavigationCompassItem implements Listener {
     public static final NamespacedKey KEY = new NamespacedKey(ZanderHubMain.plugin, "navigation_compass");

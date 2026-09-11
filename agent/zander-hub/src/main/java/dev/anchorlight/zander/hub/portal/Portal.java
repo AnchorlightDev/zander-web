@@ -1,12 +1,14 @@
 package dev.anchorlight.zander.hub.portal;
 
+import dev.anchorlight.stonelib.region.Cuboid;
+
 import java.util.Objects;
 
 /**
  * An immutable, fully-validated custom portal: a cuboid region that, when entered,
  * sends the player to a server or a local location.
  */
-public record Portal(String id, String displayName, boolean enabled, PortalRegion region,
+public record Portal(String id, String displayName, boolean enabled, Cuboid region,
         PortalDestination destination, String permission, long cooldownMs, String sound,
         String successMessage, String deniedMessage, PortalAppearance appearance) {
     public Portal {
@@ -27,7 +29,7 @@ public record Portal(String id, String displayName, boolean enabled, PortalRegio
     }
 
     /// Creates an invisible portal (no rendered appearance).
-    public Portal(String id, String displayName, boolean enabled, PortalRegion region,
+    public Portal(String id, String displayName, boolean enabled, Cuboid region,
             PortalDestination destination, String permission, long cooldownMs, String sound,
             String successMessage, String deniedMessage) {
         this(id, displayName, enabled, region, destination, permission, cooldownMs, sound,

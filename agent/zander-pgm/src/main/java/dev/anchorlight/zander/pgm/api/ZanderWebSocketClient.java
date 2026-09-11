@@ -1,6 +1,7 @@
 package dev.anchorlight.zander.pgm.api;
 
 import com.google.gson.JsonObject;
+import dev.anchorlight.stonelib.http.ConnectionHealth;
 import dev.anchorlight.zander.pgm.config.ZanderPGMConfig;
 import dev.anchorlight.zander.pgm.api.dto.BridgeEvent;
 import dev.anchorlight.zander.pgm.util.JsonUtil;
@@ -23,14 +24,14 @@ import java.util.function.Consumer;
 public class ZanderWebSocketClient {
 
     private final ZanderPGMConfig config;
-    private final ApiHealth health;
+    private final ConnectionHealth health;
     private final SafeLogger logger;
     private final Consumer<JsonObject> inboundHandler;
     private final HttpClient http;
     private final AtomicReference<WebSocket> socket = new AtomicReference<>();
     private volatile boolean shuttingDown;
 
-    public ZanderWebSocketClient(ZanderPGMConfig config, ApiHealth health, SafeLogger logger,
+    public ZanderWebSocketClient(ZanderPGMConfig config, ConnectionHealth health, SafeLogger logger,
                                  Consumer<JsonObject> inboundHandler) {
         this.config = config;
         this.health = health;
@@ -48,16 +49,16 @@ public class ZanderWebSocketClient {
         shuttingDown = false;
         try {
             http.newWebSocketBuilder()
-                    .header("Authorization", ZanderApiClient.bearerToken(config.token))
+                    .header("Authorization", "Bearer " + config.token)
                     .header("X-Server-Id", config.serverId)
                     .buildAsync(URI.create(config.websocketUrl), new Listener())
                     .whenComplete((ws, err) -> {
                         if (err != null) {
-                            health.setWebsocketConnected(false);
+                            health.setStreamConnected(false);
                             logger.debug("WebSocket connect failed: " + err.getMessage());
                         } else {
                             socket.set(ws);
-                            health.setWebsocketConnected(true);
+                            health.setStreamConnected(true);
                             logger.info("WebSocket connected to " + config.websocketUrl);
                         }
                     });
@@ -84,7 +85,7 @@ public class ZanderWebSocketClient {
     }
 
     public boolean isConnected() {
-        return health.isWebsocketConnected();
+        return health.isStreamConnected();
     }
 
     public void close() {
@@ -96,7 +97,7 @@ public class ZanderWebSocketClient {
             } catch (Exception ignored) {
             }
         }
-        health.setWebsocketConnected(false);
+        health.setStreamConnected(false);
     }
 
     private final class Listener implements WebSocket.Listener {
@@ -104,7 +105,7 @@ public class ZanderWebSocketClient {
 
         @Override
         public void onOpen(WebSocket webSocket) {
-            health.setWebsocketConnected(true);
+            health.setStreamConnected(true);
             webSocket.request(1);
         }
 
@@ -129,7 +130,7 @@ public class ZanderWebSocketClient {
 
         @Override
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-            health.setWebsocketConnected(false);
+            health.setStreamConnected(false);
             if (!shuttingDown) {
                 logger.debug("WebSocket closed (" + statusCode + "): " + reason);
             }
@@ -138,7 +139,7 @@ public class ZanderWebSocketClient {
 
         @Override
         public void onError(WebSocket webSocket, Throwable error) {
-            health.setWebsocketConnected(false);
+            health.setStreamConnected(false);
             logger.debug("WebSocket error: " + error.getMessage());
         }
     }

@@ -1,5 +1,7 @@
 package dev.anchorlight.zander.hub.portal;
 
+import dev.anchorlight.stonelib.region.Cuboid;
+import dev.anchorlight.stonelib.region.RegionIndex;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -14,11 +16,11 @@ class PortalServiceTest {
     private PortalService newService(Path tempDir) {
         File file = tempDir.resolve("portals.yml").toFile();
         PortalRepository repository = new PortalRepository(file, Logger.getLogger("test"), world -> true);
-        return new PortalService(repository, new PortalSpatialIndex());
+        return new PortalService(repository, new RegionIndex<>(Portal::region));
     }
 
     private Portal samplePortal(String id) {
-        return new Portal(id, id, true, new PortalRegion("world", 0, 60, 0, 1, 61, 1),
+        return new Portal(id, id, true, new Cuboid("world", 0, 60, 0, 1, 61, 1),
                 new ServerPortalDestination("survival"), null, 0L, null, "s", "d");
     }
 

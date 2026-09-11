@@ -2,9 +2,9 @@ package dev.anchorlight.zander.hub.configs;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.isValidBoolean;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.isValidHotbarSlot;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.validateConfig;
+import static dev.anchorlight.stonelib.ConfigValidator.isValidBoolean;
+import static dev.anchorlight.stonelib.ConfigValidator.isValidHotbarSlot;
+import static dev.anchorlight.stonelib.ConfigValidator.validateConfig;
 
 /**
  * Manages miscellaneous settings for the plugin, and their persistance.
@@ -26,7 +26,7 @@ public class MiscConfig {
         FileConfiguration config = plugin.getConfig();
         int fallback = 4;
         String field = "misc.slot_hub_compass";
-        validateConfig(config, field, isValidHotbarSlot, fallback);
+        validateConfig(plugin, config, field, isValidHotbarSlot, fallback);
         plugin.saveConfig(); // * save to external 'config.yml'
         this.slotHubCompass = config.getInt(field);
     }
@@ -37,7 +37,7 @@ public class MiscConfig {
         FileConfiguration config = plugin.getConfig();
         boolean fallback = false;
         String field = "misc.always_first_join";
-        validateConfig(config, field, isValidBoolean, fallback);
+        validateConfig(plugin, config, field, isValidBoolean, fallback);
         plugin.saveConfig(); // * save to external 'config.yml'
         this.alwaysFirstJoin = config.getBoolean(field);
     }

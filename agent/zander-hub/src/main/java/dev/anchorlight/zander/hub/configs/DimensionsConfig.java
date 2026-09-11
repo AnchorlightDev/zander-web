@@ -2,8 +2,8 @@ package dev.anchorlight.zander.hub.configs;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.isValidBoolean;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.validateConfig;
+import static dev.anchorlight.stonelib.ConfigValidator.isValidBoolean;
+import static dev.anchorlight.stonelib.ConfigValidator.validateConfig;
 
 /**
  * Manages Nether/End dimension-blocking settings, and their persistence.
@@ -28,10 +28,10 @@ public class DimensionsConfig {
     public void setup() {
         FileConfiguration config = plugin.getConfig();
 
-        validateConfig(config, "dimensions.nether.blocked", isValidBoolean, true);
-        validateConfig(config, "dimensions.nether.allow-bypass", isValidBoolean, true);
-        validateConfig(config, "dimensions.end.blocked", isValidBoolean, false);
-        validateConfig(config, "dimensions.end.allow-bypass", isValidBoolean, true);
+        validateConfig(plugin, config, "dimensions.nether.blocked", isValidBoolean, true);
+        validateConfig(plugin, config, "dimensions.nether.allow-bypass", isValidBoolean, true);
+        validateConfig(plugin, config, "dimensions.end.blocked", isValidBoolean, false);
+        validateConfig(plugin, config, "dimensions.end.allow-bypass", isValidBoolean, true);
 
         if (!config.isString("dimensions.nether.message")) {
             config.set("dimensions.nether.message", "<red>The Nether is not available from the Hub.</red>");

@@ -48,9 +48,9 @@ queued (bounded; oldest dropped when full) and retried, optionally in batches.
 
 ### Required dependencies
 
-- **Paper** 1.21+ (`paper-api`)
+- **Paper** 26.2 (`paper-api`), Java 25
 - **PGM** (runtime, required)
-- Gson (shaded), JDK 17 `HttpClient`/`WebSocket`
+- Gson and StoneLib `http` (both shaded), JDK `HttpClient`/`WebSocket`
 
 ## Config setup
 
@@ -210,7 +210,7 @@ rate it.
 
 ## Building
 
-This module is part of the `zander` Maven reactor and builds with Java 17.
+This module is part of the `zander` Maven reactor and builds with Java 25 (JDK 25 is required to read Paper 26.2 class files).
 `paper-api` is resolved from `https://repo.papermc.io`; the build needs network
 access to that repository. From the repo root:
 

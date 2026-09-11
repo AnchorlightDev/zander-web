@@ -6,22 +6,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PortalSessionManagerTest {
     @Test
-    void activePortalStartsEmpty() {
-        PortalSessionManager sessions = new PortalSessionManager();
-        assertTrue(sessions.getActivePortalId(UUID.randomUUID()).isEmpty());
-    }
-
-    @Test
-    void setAndClearActivePortal() {
-        PortalSessionManager sessions = new PortalSessionManager();
-        UUID player = UUID.randomUUID();
-        sessions.setActivePortalId(player, "survival");
-        assertEquals("survival", sessions.getActivePortalId(player).orElseThrow());
-        sessions.clearActivePortalId(player);
-        assertTrue(sessions.getActivePortalId(player).isEmpty());
-    }
-
-    @Test
     void cooldownBlocksImmediateRetrigger() {
         PortalSessionManager sessions = new PortalSessionManager();
         UUID player = UUID.randomUUID();
@@ -61,10 +45,12 @@ class PortalSessionManagerTest {
     void clearRemovesAllState() {
         PortalSessionManager sessions = new PortalSessionManager();
         UUID player = UUID.randomUUID();
-        sessions.setActivePortalId(player, "survival");
+        sessions.markTriggered(player, "survival", 1000L, 2000L);
+        sessions.suppressUntil(player, 5000L);
         sessions.tryMarkConnectPending(player);
         sessions.clear(player);
-        assertTrue(sessions.getActivePortalId(player).isEmpty());
+        assertFalse(sessions.isOnCooldown(player, "survival", 1500L));
+        assertFalse(sessions.isSuppressed(player, 1500L));
         assertTrue(sessions.tryMarkConnectPending(player));
     }
 }

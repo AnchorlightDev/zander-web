@@ -1,5 +1,6 @@
 package dev.anchorlight.zander.hub.portal;
 
+import dev.anchorlight.stonelib.region.Cuboid;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -129,7 +130,7 @@ class PortalRepositoryTest {
         PortalRepository repository = new PortalRepository(file, LOGGER, world -> true);
 
         Portal portal = new Portal("info", "Information Centre", true,
-                new PortalRegion("world", -5, 128, 20, -3, 131, 22),
+                new Cuboid("world", -5, 128, 20, -3, 131, 22),
                 new LocationPortalDestination("world", 0.5, 129, 0.5, 180f, 0f),
                 null, 1500L, "ENTITY_ENDERMAN_TELEPORT", "Teleporting...", "You cannot use this portal.");
 

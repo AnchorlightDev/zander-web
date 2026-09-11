@@ -1,18 +1,22 @@
 package dev.anchorlight.zander.hub.commands.portal;
 
+import dev.anchorlight.stonelib.display.ArgbColours;
+import dev.anchorlight.stonelib.region.Cuboid;
+import dev.anchorlight.stonelib.region.SelectionManager;
+import dev.anchorlight.stonelib.region.SelectionWand;
 import dev.anchorlight.zander.hub.ConfigurationManager;
 import dev.anchorlight.zander.hub.ZanderHubMain;
 import dev.anchorlight.zander.hub.bridge.BridgeMessage;
 import dev.anchorlight.zander.hub.portal.LocationPortalDestination;
 import dev.anchorlight.zander.hub.portal.Portal;
 import dev.anchorlight.zander.hub.portal.PortalAppearance;
-import dev.anchorlight.zander.hub.portal.PortalRegion;
 import dev.anchorlight.zander.hub.portal.PortalRenderer;
 import dev.anchorlight.zander.hub.portal.PortalService;
 import dev.anchorlight.zander.hub.portal.ServerPortalDestination;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -32,12 +36,15 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
             "setstyle", "setcolour", "reload", "tp", "send");
 
     private final PortalService portalService;
-    private final PortalSelectionManager selections;
+    private final SelectionManager selections;
+    private final SelectionWand wand;
     private final PortalRenderer renderer;
 
-    public PortalCommand(PortalService portalService, PortalSelectionManager selections, PortalRenderer renderer) {
+    public PortalCommand(PortalService portalService, SelectionManager selections, SelectionWand wand,
+            PortalRenderer renderer) {
         this.portalService = portalService;
         this.selections = selections;
+        this.wand = wand;
         this.renderer = renderer;
     }
 
@@ -93,7 +100,10 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
             }
             return;
         }
-        player.getInventory().addItem(PortalWandListener.createWand());
+        String materialName = ZanderHubMain.plugin.getConfig().getString("portal-wand.material", "BLAZE_ROD");
+        Material material = Material.matchMaterial(materialName);
+        String display = ZanderHubMain.plugin.getConfig().getString("portal-wand.display", "<gold>Portal Wand</gold>");
+        player.getInventory().addItem(wand.create(material == null ? Material.BLAZE_ROD : material, MM.deserialize(display)));
         msg(player, "<yellow>Portal wand given. Left-click = position 1, right-click = position 2.</yellow>");
     }
 
@@ -110,7 +120,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
             msg(sender, "<red>A portal with id '" + id + "' already exists.</red>");
             return;
         }
-        Optional<PortalRegion> region = selections.buildRegion(player.getUniqueId());
+        Optional<Cuboid> region = selections.selection(player.getUniqueId());
         if (region.isEmpty()) {
             msg(sender, "<red>Select two positions with the portal wand first (same world).</red>");
             return;
@@ -174,7 +184,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         msg(sender, "<gray>Permission: " + (portal.permission() == null ? "none" : portal.permission()) + "</gray>");
         msg(sender, "<gray>Cooldown: " + portal.cooldownMs() + "ms</gray>");
         msg(sender, "<gray>Appearance: " + portal.appearance().style().name().toLowerCase(java.util.Locale.ROOT)
-                + " (colour " + PortalAppearance.formatColour(portal.appearance().argb()) + ")</gray>");
+                + " (colour " + ArgbColours.format(portal.appearance().argb()) + ")</gray>");
     }
 
     private void handleEnable(CommandSender sender, String[] args, boolean enabled) {
@@ -347,7 +357,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
             msg(sender, "<red>No such portal: " + args[0] + "</red>");
             return;
         }
-        Optional<Integer> argb = PortalAppearance.parseColour(args[1]);
+        Optional<Integer> argb = ArgbColours.parse(args[1]);
         if (argb.isEmpty()) {
             msg(sender, "<red>Invalid colour: " + args[1] + ". Use #RRGGBB, #AARRGGBB or a dye colour name.</red>");
             return;
@@ -368,7 +378,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         String description = switch (appearance.style()) {
             case NONE -> "invisible";
             case NETHER -> "a nether portal";
-            case TINT -> "a " + PortalAppearance.formatColour(appearance.argb()) + " tint";
+            case TINT -> "a " + ArgbColours.format(appearance.argb()) + " tint";
         };
         msg(sender, "<green>Portal '" + existing.id() + "' is now " + description + ".</green>");
         if (appearance.style() == PortalAppearance.Style.NETHER) {
@@ -406,7 +416,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
             msg(sender, "<red>No such portal: " + args[0] + "</red>");
             return;
         }
-        PortalRegion region = found.get().region();
+        Cuboid region = found.get().region();
         World world = org.bukkit.Bukkit.getWorld(region.world());
         if (world == null) {
             msg(sender, "<red>Portal's world is not currently loaded.</red>");
@@ -504,7 +514,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
             return prefixMatch(List.of("none", "nether", "tint"), args[2]);
         }
         if (args.length == 3 && (args[0].equalsIgnoreCase("setcolour") || args[0].equalsIgnoreCase("setcolor"))) {
-            return prefixMatch(new ArrayList<>(PortalAppearance.colourNames()), args[2]);
+            return prefixMatch(new ArrayList<>(ArgbColours.names()), args[2]);
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("setserver")) {
             return prefixMatch(compassServerIds(), args[2]);

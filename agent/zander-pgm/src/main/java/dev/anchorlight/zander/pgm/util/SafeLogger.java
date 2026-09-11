@@ -17,6 +17,15 @@ public final class SafeLogger {
         this.debug = debug;
     }
 
+    /** The underlying plugin logger, for libraries that log directly. */
+    public Logger logger() {
+        return logger;
+    }
+
+    public boolean isDebug() {
+        return debug;
+    }
+
     public void info(String message) {
         logger.info(message);
     }

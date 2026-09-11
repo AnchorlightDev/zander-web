@@ -61,7 +61,7 @@ public class MapTokensCommand {
             return;
         }
         sender.sendMessage(PREFIX + "Map Tokens: " + (plugin.cfg().mapTokensEnabled ? "enabled" : "disabled"));
-        sender.sendMessage(PREFIX + "API sync: " + (plugin.health().isRestReachable() ? "connected" : "offline"));
+        sender.sendMessage(PREFIX + "API sync: " + (plugin.health().isReachable() ? "connected" : "offline"));
         sender.sendMessage(PREFIX + "Pending requests: " + plugin.tokens().pendingCount());
         sender.sendMessage(PREFIX + "Next-map override: " + plugin.rotation().nextMapOverride().orElse("none"));
         sender.sendMessage(PREFIX + "Queue size: " + plugin.queue().size());

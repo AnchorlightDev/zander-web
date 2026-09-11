@@ -1,15 +1,14 @@
 package dev.anchorlight.zander.pgm.api;
 
+import dev.anchorlight.stonelib.http.ApiClient;
+import dev.anchorlight.stonelib.http.ConnectionHealth;
+import dev.anchorlight.stonelib.http.RetryQueue;
 import dev.anchorlight.zander.pgm.config.ZanderPGMConfig;
 import dev.anchorlight.zander.pgm.api.dto.BridgeEvent;
 import dev.anchorlight.zander.pgm.util.JsonUtil;
 import dev.anchorlight.zander.pgm.util.SafeLogger;
 import dev.anchorlight.zander.pgm.util.TimeUtil;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -17,29 +16,33 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Async REST client for zander-web Mixed ingestion endpoints. All calls run
- * off the main thread via the JDK {@link HttpClient} executor and never throw
- * into the caller. Failed generic events are pushed onto the
- * {@link EventQueue} for later retry.
+ * REST client for zander-web Mixed ingestion endpoints, built on StoneLib's {@link ApiClient}:
+ * all calls run off the main thread and never throw into the caller. Failed generic events are
+ * pushed onto the {@link RetryQueue} for later retry.
  */
 public class ZanderApiClient {
 
     private final ZanderPGMConfig config;
-    private final ApiHealth health;
-    private final EventQueue queue;
+    private final RetryQueue<BridgeEvent> queue;
     private final SafeLogger logger;
     private final String pluginVersion;
-    private final HttpClient http;
+    private final ApiClient http;
 
-    public ZanderApiClient(ZanderPGMConfig config, ApiHealth health, EventQueue queue,
+    public ZanderApiClient(ZanderPGMConfig config, ConnectionHealth health, RetryQueue<BridgeEvent> queue,
                            SafeLogger logger, String pluginVersion) {
         this.config = config;
-        this.health = health;
         this.queue = queue;
         this.logger = logger;
         this.pluginVersion = pluginVersion;
-        this.http = HttpClient.newBuilder()
+        this.http = ApiClient.builder(config.baseUrl)
                 .connectTimeout(Duration.ofSeconds(config.connectTimeoutSeconds))
+                .requestTimeout(Duration.ofSeconds(config.requestTimeoutSeconds))
+                .bearerToken(config.token)
+                .header("X-Server-Id", config.serverId)
+                .header("X-Plugin-Version", pluginVersion)
+                .health(health)
+                .logger(logger.logger())
+                .debug(logger.isDebug())
                 .build();
     }
 
@@ -51,93 +54,21 @@ public class ZanderApiClient {
         }
     }
 
-    private HttpRequest.Builder request(String path) {
-        return HttpRequest.newBuilder()
-                .uri(URI.create(resolveUrl(config.baseUrl, path)))
-                .timeout(Duration.ofSeconds(config.requestTimeoutSeconds))
-                .header("Content-Type", "application/json")
-                .header("Authorization", bearerToken(config.token))
-                .header("X-Server-Id", config.serverId)
-                .header("X-Plugin-Version", pluginVersion);
-    }
-
-    static String bearerToken(String token) {
-        return "Bearer " + token;
-    }
-
-    static String resolveUrl(String baseUrl, String path) {
-        String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-        if (normalizedBase.endsWith("/api") && path.startsWith("/api/")) {
-            return normalizedBase.substring(0, normalizedBase.length() - 4) + path;
-        }
-        return normalizedBase + path;
-    }
-
     /** POST an arbitrary body to a path. Never throws; returns success flag. */
     public CompletableFuture<Boolean> post(String path, Object body) {
-        HttpRequest req;
+        String json;
         try {
-            req = request(path)
-                    .POST(HttpRequest.BodyPublishers.ofString(JsonUtil.toJson(body)))
-                    .build();
+            json = JsonUtil.toJson(body);
         } catch (Exception e) {
-            logger.warn("Failed to build POST " + path + ": " + e.getMessage());
+            logger.warn("Failed to serialise POST " + path + ": " + e.getMessage());
             return CompletableFuture.completedFuture(false);
         }
-        logger.debug("POST " + path);
-        return http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                .handle((resp, err) -> {
-                    if (err != null) {
-                        health.markRestFailure();
-                        logger.warn("POST " + path + " failed: " + err.getMessage());
-                        return false;
-                    }
-                    if (resp.statusCode() >= 300) {
-                        health.markRestFailure();
-                        logger.warn("POST " + path + " returned HTTP " + resp.statusCode()
-                                + ": " + truncate(resp.body()));
-                        return false;
-                    }
-                    health.markRestSuccess();
-                    logger.debug("POST " + path + " succeeded (" + resp.statusCode() + ")");
-                    return true;
-                });
+        return http.post(path, json);
     }
 
     /** GET a path and return the response body, or null on failure. */
     public CompletableFuture<String> get(String path) {
-        HttpRequest req;
-        try {
-            req = request(path).GET().build();
-        } catch (Exception e) {
-            logger.warn("Failed to build GET " + path + ": " + e.getMessage());
-            return CompletableFuture.completedFuture(null);
-        }
-        logger.debug("GET " + path);
-        return http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                .handle((resp, err) -> {
-                    if (err != null) {
-                        health.markRestFailure();
-                        logger.warn("GET " + path + " failed: " + err.getMessage());
-                        return null;
-                    }
-                    if (resp.statusCode() >= 300) {
-                        health.markRestFailure();
-                        logger.warn("GET " + path + " returned HTTP " + resp.statusCode()
-                                + ": " + truncate(resp.body()));
-                        return null;
-                    }
-                    health.markRestSuccess();
-                    logger.debug("GET " + path + " succeeded (" + resp.statusCode() + ")");
-                    return resp.body();
-                });
-    }
-
-    private static String truncate(String body) {
-        if (body == null) {
-            return "";
-        }
-        return body.length() > 300 ? body.substring(0, 300) + "..." : body;
+        return http.get(path);
     }
 
     /**
@@ -211,32 +142,26 @@ public class ZanderApiClient {
         return get("/api/mixed/map-tokens/balance?uuid=" + uuid + "&username=" + username);
     }
 
-    /** Submits a self-service Map Token spend (nominate/set_next/sponsor) against the web-side ledger. */
+    /**
+     * Submits a self-service Map Token spend (nominate/set_next/sponsor) against the web-side ledger.
+     * Completes with the response body whatever its status, since rejections are explained there,
+     * or null when no response arrived.
+     */
     public CompletableFuture<String> requestMapToken(String uuid, String username, String mapKey, String actionType) {
         Map<String, Object> body = new HashMap<>();
         body.put("uuid", uuid);
         body.put("username", username);
         body.put("mapKey", mapKey);
         body.put("action", actionType);
-        HttpRequest req;
+        String json;
         try {
-            req = request("/api/mixed/map-tokens/request")
-                    .POST(HttpRequest.BodyPublishers.ofString(JsonUtil.toJson(body)))
-                    .build();
+            json = JsonUtil.toJson(body);
         } catch (Exception e) {
             logger.warn("Failed to build map token request: " + e.getMessage());
             return CompletableFuture.completedFuture(null);
         }
-        return http.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                .handle((resp, err) -> {
-                    if (err != null) {
-                        health.markRestFailure();
-                        logger.warn("Map token request failed: " + err.getMessage());
-                        return null;
-                    }
-                    health.markRestSuccess();
-                    return resp.body();
-                });
+        return http.send("POST", "/api/mixed/map-tokens/request", json)
+                .thenApply(response -> response.map(ApiClient.Response::body).orElse(null));
     }
 
     public CompletableFuture<String> currentVote() {

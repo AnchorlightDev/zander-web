@@ -9,7 +9,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import dev.anchorlight.zander.velocity.ZanderVelocityMain;
 import dev.anchorlight.zander.velocity.util.messaging.MessageDisplayNameResolver;
 import dev.anchorlight.zander.velocity.util.messaging.PrivateMessageService;
-import dev.anchorlight.zander.velocity.util.messaging.VanishStatusResolver;
+import dev.anchorlight.stonelib.vanish.proxy.ProxyVanishStatus;
 
 import java.util.Arrays;
 import java.util.List;
@@ -84,7 +84,7 @@ public class message implements SimpleCommand {
         if (args.length <= 1) {
             String prefix = args.length == 1 ? args[0].toLowerCase() : "";
             return ZanderVelocityMain.getProxy().getAllPlayers().stream()
-                    .filter(player -> !VanishStatusResolver.isVanished(player))
+                    .filter(player -> !ProxyVanishStatus.isVanished(player))
                     .map(Player::getUsername)
                     .filter(name -> name.toLowerCase().startsWith(prefix))
                     .sorted(String.CASE_INSENSITIVE_ORDER)

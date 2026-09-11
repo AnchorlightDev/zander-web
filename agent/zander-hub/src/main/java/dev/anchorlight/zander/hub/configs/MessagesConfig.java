@@ -7,8 +7,8 @@ import net.kyori.adventure.text.TextComponent;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.isValidJoinLeave;
-import static dev.anchorlight.zander.hub.utils.ConfigValidator.validateConfig;
+import static dev.anchorlight.stonelib.ConfigValidator.isValidPlayerString;
+import static dev.anchorlight.stonelib.ConfigValidator.validateConfig;
 
 /**
  * Manages server messages for the plugin, and their persistence.
@@ -34,9 +34,9 @@ public class MessagesConfig {
         String fieldJoin = "messages.join";
         String fieldLeave = "messages.leave";
 
-        validateConfig(config, fieldJoin, isValidJoinLeave, fallbackJoin,
+        validateConfig(plugin, config, fieldJoin, isValidPlayerString, fallbackJoin,
                 template -> this.textCompJoinTemplate = template);
-        validateConfig(config, fieldLeave, isValidJoinLeave, fallbackLeave,
+        validateConfig(plugin, config, fieldLeave, isValidPlayerString, fallbackLeave,
                 template -> this.textCompLeaveTemplate = template);
 
         plugin.saveConfig(); // * save to external 'config.yml'

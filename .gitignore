@@ -10,3 +10,4 @@ features.json
 graphify-out
 .idea/
 target/
+.vscode/

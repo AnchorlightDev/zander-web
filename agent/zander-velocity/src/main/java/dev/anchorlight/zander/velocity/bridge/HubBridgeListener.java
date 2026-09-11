@@ -8,10 +8,12 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import dev.anchorlight.stonelib.cooldown.RateLimiter;
 import dev.dejvokep.boostedyaml.YamlDocument;
 import dev.dejvokep.boostedyaml.route.Route;
 import org.slf4j.Logger;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,7 +47,7 @@ public class HubBridgeListener {
         this.logMalformed = config.getBoolean(Route.from("hub-bridge", "logging", "malformed-messages"), true);
         this.logDeniedSources = config.getBoolean(Route.from("hub-bridge", "logging", "denied-source-servers"), true);
         long cooldownMs = config.getLong(Route.from("hub-bridge", "rate-limit", "connection-request-cooldown-ms"), 1500L);
-        this.rateLimiter = new RateLimiter(cooldownMs);
+        this.rateLimiter = new RateLimiter(Duration.ofMillis(cooldownMs));
     }
 
     @Subscribe

@@ -1,5 +1,6 @@
 package dev.anchorlight.zander.hub.portal;
 
+import dev.anchorlight.stonelib.region.RegionTracker;
 import dev.anchorlight.zander.hub.ZanderHubMain;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -11,18 +12,18 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
  * Bukkit-side glue: only re-evaluates portal membership when the player crosses a block
- * boundary, delegating the actual enter/exit logic to {@link PortalTransitionDetector}.
+ * boundary, delegating enter/exit detection to StoneLib's {@link RegionTracker}.
  */
 public class PortalMovementListener implements Listener {
     private final ZanderHubMain plugin;
-    private final PortalTransitionDetector detector;
+    private final RegionTracker<Portal> tracker;
     private final PortalSessionManager sessions;
     private final PortalActivationHandler activationHandler;
 
-    public PortalMovementListener(ZanderHubMain plugin, PortalTransitionDetector detector,
+    public PortalMovementListener(ZanderHubMain plugin, RegionTracker<Portal> tracker,
             PortalSessionManager sessions, PortalActivationHandler activationHandler) {
         this.plugin = plugin;
-        this.detector = detector;
+        this.tracker = tracker;
         this.sessions = sessions;
         this.activationHandler = activationHandler;
     }
@@ -52,8 +53,8 @@ public class PortalMovementListener implements Listener {
     }
 
     private void handleBlockMove(Player player, Location to) {
-        detector.onBlockMove(player.getUniqueId(), to.getWorld().getName(),
-                to.getBlockX(), to.getBlockY(), to.getBlockZ()).ifPresent(portal -> {
+        tracker.update(player.getUniqueId(), to.getWorld().getName(),
+                to.getBlockX(), to.getBlockY(), to.getBlockZ()).entered().ifPresent(portal -> {
             if (sessions.isSuppressed(player.getUniqueId(), System.currentTimeMillis())) {
                 return; // just teleported here by another portal; don't chain-trigger
             }
@@ -63,6 +64,7 @@ public class PortalMovementListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        tracker.clear(event.getPlayer().getUniqueId());
         sessions.clear(event.getPlayer().getUniqueId());
     }
 }

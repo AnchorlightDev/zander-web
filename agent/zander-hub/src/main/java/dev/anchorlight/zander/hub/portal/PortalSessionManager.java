@@ -1,32 +1,19 @@
 package dev.anchorlight.zander.hub.portal;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Per-player runtime portal state: which portal (if any) they're currently inside, per-portal
- * cooldown timestamps, post-teleport loop-suppression, and in-flight connect-request tracking.
+ * Per-player runtime portal state: per-portal cooldown timestamps, post-teleport loop-suppression,
+ * and in-flight connect-request tracking. Which portal a player is inside is tracked by StoneLib's
+ * {@code RegionTracker}.
  * Keyed by player UUID; call {@link #clear(UUID)} on disconnect.
  */
 public class PortalSessionManager {
-    private final Map<UUID, String> activePortal = new ConcurrentHashMap<>();
     private final Map<UUID, Map<String, Long>> cooldownUntil = new ConcurrentHashMap<>();
     private final Map<UUID, Long> suppressedUntil = new ConcurrentHashMap<>();
     private final java.util.Set<UUID> connectPending = ConcurrentHashMap.newKeySet();
-
-    public Optional<String> getActivePortalId(UUID player) {
-        return Optional.ofNullable(activePortal.get(player));
-    }
-
-    public void setActivePortalId(UUID player, String portalId) {
-        activePortal.put(player, portalId);
-    }
-
-    public void clearActivePortalId(UUID player) {
-        activePortal.remove(player);
-    }
 
     public boolean isOnCooldown(UUID player, String portalId, long nowMs) {
         Map<String, Long> byPortal = cooldownUntil.get(player);
@@ -59,7 +46,6 @@ public class PortalSessionManager {
     }
 
     public void clear(UUID player) {
-        activePortal.remove(player);
         cooldownUntil.remove(player);
         suppressedUntil.remove(player);
         connectPending.remove(player);

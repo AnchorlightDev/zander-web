@@ -14,9 +14,9 @@
     <name>zander-velocity</name>
 
     <properties>
-        <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <java.version>25</java.version>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -33,7 +33,15 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <release>17</release>
+                    <release>25</release>
+                    <!-- JDK 23+ no longer discovers annotation processors implicitly. -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.42</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -44,9 +52,16 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.4.1</version>
+                <version>3.6.2</version>
                 <configuration>
                     <filters>
+                        <filter>
+                            <artifact>dev.anchorlight:StoneLib</artifact>
+                            <includes>
+                                <include>dev/anchorlight/stonelib/cooldown/RateLimiter*</include>
+                                <include>dev/anchorlight/stonelib/vanish/proxy/**</include>
+                            </includes>
+                        </filter>
                         <filter>
                             <artifact>*:*</artifact>
                             <excludes>
@@ -55,6 +70,10 @@
                         </filter>
                     </filters>
                     <relocations>
+                        <relocation>
+                            <pattern>dev.anchorlight.stonelib</pattern>
+                            <shadedPattern>dev.anchorlight.zander.velocity.libs.stonelib</shadedPattern>
+                        </relocation>
                         <relocation>
                             <pattern>dev.dejvokep.boostedyaml</pattern>
                             <shadedPattern>dev.anchorlight.zander.velocity.libs</shadedPattern>
@@ -93,6 +112,19 @@
     </repositories>
 
     <dependencies>
+        <!-- StoneLib: only its Bukkit-free classes (RateLimiter, ProxyVanishStatus) are used on the proxy. -->
+        <dependency>
+            <groupId>dev.anchorlight</groupId>
+            <artifactId>StoneLib</artifactId>
+            <version>2.1.0</version>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
         <dependency>
             <groupId>com.velocitypowered</groupId>
             <artifactId>velocity-api</artifactId>
@@ -108,7 +140,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.36</version>
+            <version>1.18.42</version>
             <scope>compile</scope>
         </dependency>
         <dependency>

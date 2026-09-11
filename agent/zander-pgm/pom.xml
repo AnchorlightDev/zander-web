@@ -27,7 +27,7 @@
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>1.21.4-R0.1-SNAPSHOT</version>
+            <version>26.2.build.123-stable</version>
             <scope>provided</scope>
         </dependency>
 
@@ -46,6 +46,19 @@
         </dependency>
         -->
 
+        <!-- StoneLib: HTTP client, health tracking and retry queue. Shaded and relocated below. -->
+        <dependency>
+            <groupId>dev.anchorlight</groupId>
+            <artifactId>StoneLib</artifactId>
+            <version>2.1.0</version>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
@@ -74,7 +87,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <release>17</release>
+                    <release>25</release>
                 </configuration>
             </plugin>
             <plugin>
@@ -88,15 +101,25 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>3.6.2</version>
                 <configuration>
                     <relocations>
+                        <relocation>
+                            <pattern>dev.anchorlight.stonelib</pattern>
+                            <shadedPattern>dev.anchorlight.zander.pgm.libs.stonelib</shadedPattern>
+                        </relocation>
                         <relocation>
                             <pattern>com.google.gson</pattern>
                             <shadedPattern>dev.anchorlight.zander.pgm.libs.gson</shadedPattern>
                         </relocation>
                     </relocations>
                     <filters>
+                        <filter>
+                            <artifact>dev.anchorlight:StoneLib</artifact>
+                            <includes>
+                                <include>dev/anchorlight/stonelib/http/**</include>
+                            </includes>
+                        </filter>
                         <filter>
                             <artifact>*:*</artifact>
                             <excludes>

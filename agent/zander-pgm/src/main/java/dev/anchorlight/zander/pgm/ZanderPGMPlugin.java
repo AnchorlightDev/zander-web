@@ -4,8 +4,8 @@ import com.google.gson.JsonObject;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
-import dev.anchorlight.zander.pgm.api.ApiHealth;
-import dev.anchorlight.zander.pgm.api.EventQueue;
+import dev.anchorlight.stonelib.http.ConnectionHealth;
+import dev.anchorlight.stonelib.http.RetryQueue;
 import dev.anchorlight.zander.pgm.api.ZanderApiClient;
 import dev.anchorlight.zander.pgm.api.ZanderWebSocketClient;
 import dev.anchorlight.zander.pgm.api.dto.BridgeEvent;
@@ -51,8 +51,8 @@ public class ZanderPGMPlugin extends JavaPlugin {
     private SafeLogger log;
     private ZanderPGMConfig config;
 
-    private ApiHealth health;
-    private EventQueue queue;
+    private ConnectionHealth health;
+    private RetryQueue<BridgeEvent> queue;
     private ZanderApiClient api;
     private ZanderWebSocketClient ws;
 
@@ -128,8 +128,8 @@ public class ZanderPGMPlugin extends JavaPlugin {
 
     private void initServices() {
         String version = getDescription().getVersion();
-        this.health = new ApiHealth();
-        this.queue = new EventQueue(config.maxQueueSize, log);
+        this.health = new ConnectionHealth();
+        this.queue = new RetryQueue<>(config.maxQueueSize, getLogger());
         this.api = new ZanderApiClient(config, health, queue, log, version);
         this.ws = new ZanderWebSocketClient(config, health, log, this::handleInbound);
 
@@ -356,11 +356,11 @@ public class ZanderPGMPlugin extends JavaPlugin {
         return ws;
     }
 
-    public ApiHealth health() {
+    public ConnectionHealth health() {
         return health;
     }
 
-    public EventQueue queue() {
+    public RetryQueue<BridgeEvent> queue() {
         return queue;
     }
 

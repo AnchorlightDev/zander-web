@@ -8,7 +8,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import dev.anchorlight.zander.velocity.ZanderVelocityMain;
 import dev.anchorlight.zander.velocity.util.messaging.PrivateMessageService;
-import dev.anchorlight.zander.velocity.util.messaging.VanishStatusResolver;
+import dev.anchorlight.stonelib.vanish.proxy.ProxyVanishStatus;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -66,7 +66,7 @@ public class ignore implements SimpleCommand {
         if (args.length == 2 && ("add".equalsIgnoreCase(args[0]) || "remove".equalsIgnoreCase(args[0]))) {
             String prefix = args[1].toLowerCase();
             return ZanderVelocityMain.getProxy().getAllPlayers().stream()
-                    .filter(player -> !VanishStatusResolver.isVanished(player))
+                    .filter(player -> !ProxyVanishStatus.isVanished(player))
                     .map(Player::getUsername)
                     .filter(name -> name.toLowerCase().startsWith(prefix))
                     .sorted(String.CASE_INSENSITIVE_ORDER)
