@@ -66,3 +66,29 @@ final authority before connecting a player to a server portal's destination.
 - [ ] Rapid repeated compass clicks send exactly one `CONNECT_REQUEST`.
 - [ ] A `zander:hub` message sent from a non-allow-listed backend server is rejected and logged.
 - [ ] `/zportal reload` reports the correct portal count and rebuilds the spatial index.
+- [ ] `/zportal send survival` connects the sender; `/zportal send survival <player>` connects that
+      player and reports Velocity's result (started / denied / failed) back to the sender.
+- [ ] `/zportal setstyle test-portal nether` fills only empty blocks in the region with nether portal
+      blocks, reports how many occupied blocks were left untouched, and the blocks survive
+      neighbouring block updates.
+- [ ] Standing in a nether-style portal runs the portal's destination, never vanilla Nether travel.
+- [ ] `/zportal setstyle test-portal none` removes the nether portal blocks it placed.
+- [ ] `/zportal setcolour test-portal #33ccff` (or a dye name like `light_blue`) shows a translucent
+      tinted panel visible from both sides; `#AARRGGBB` controls opacity.
+- [ ] Tinted panels reappear after their chunk unloads and reloads, and leave no entities behind
+      after a server restart.
+- [ ] Vanilla portal generation (lighting a frame, exit portals, End platform) never replaces
+      existing blocks.
+
+## Portal appearance
+
+| Command | Effect |
+| --- | --- |
+| `/zportal setstyle <id> none` | Invisible trigger region (default). |
+| `/zportal setstyle <id> nether` | Fills empty blocks with frameless nether portal blocks (max 4096 blocks). Always purple. |
+| `/zportal setstyle <id> tint` | Translucent panel in the portal's saved colour. |
+| `/zportal setcolour <id> <colour>` | Sets the colour (`#RRGGBB`, `#AARRGGBB`, or a dye name) and switches to `tint`. |
+| `/zportal send <server-id> [player]` | Sends yourself or an online player to a Velocity server (`zanderhub.portal.send`). |
+
+Nether portal blocks cannot be recoloured without a resource pack, which is why colour uses the
+`tint` style instead.

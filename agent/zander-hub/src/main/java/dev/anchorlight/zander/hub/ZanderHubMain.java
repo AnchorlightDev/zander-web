@@ -19,6 +19,7 @@ import dev.anchorlight.zander.hub.events.HubPlayerVoid;
 import dev.anchorlight.zander.hub.gui.HubCompassItem;
 import dev.anchorlight.zander.hub.portal.PortalActivationHandler;
 import dev.anchorlight.zander.hub.portal.PortalMovementListener;
+import dev.anchorlight.zander.hub.portal.PortalRenderer;
 import dev.anchorlight.zander.hub.portal.PortalRepository;
 import dev.anchorlight.zander.hub.portal.PortalService;
 import dev.anchorlight.zander.hub.portal.PortalSessionManager;
@@ -38,6 +39,7 @@ public class ZanderHubMain extends JavaPlugin {
     public static BridgeClient bridgeClient;
     public static PortalService portalService;
     public static PortalSessionManager portalSessions;
+    public static PortalRenderer portalRenderer;
 
     public void onEnable() {
         plugin = this;
@@ -70,6 +72,9 @@ public class ZanderHubMain extends JavaPlugin {
         PortalTransitionDetector transitionDetector = new PortalTransitionDetector(portalIndex, portalSessions);
         PortalActivationHandler activationHandler = new PortalActivationHandler(this, portalSessions, bridgeClient);
         PortalSelectionManager selections = new PortalSelectionManager();
+        portalRenderer = new PortalRenderer(portalService, portalIndex);
+        portalService.setChangeListener(portalRenderer::apply);
+        portalRenderer.renderAll();
 
         // Init Message
         TextComponent enabledMessage = Component.empty()
@@ -98,11 +103,13 @@ public class ZanderHubMain extends JavaPlugin {
         pluginmanager.registerEvents(new HubCompassItem(), this);
         pluginmanager.registerEvents(new PortalWandListener(selections), this);
         pluginmanager.registerEvents(new PortalMovementListener(this, transitionDetector, portalSessions, activationHandler), this);
+        pluginmanager.registerEvents(portalRenderer, this);
 
         // Command Registry
         this.getCommand("fly").setExecutor(new fly());
-        this.getCommand("zportal").setExecutor(new PortalCommand(portalService, selections));
-        this.getCommand("zportal").setTabCompleter(new PortalCommand(portalService, selections));
+        PortalCommand portalCommand = new PortalCommand(portalService, selections, portalRenderer);
+        this.getCommand("zportal").setExecutor(portalCommand);
+        this.getCommand("zportal").setTabCompleter(portalCommand);
     }
 
     @Override
@@ -112,7 +119,11 @@ public class ZanderHubMain extends JavaPlugin {
             this.getServer().getMessenger().unregisterIncomingPluginChannel(this, "zander:hub");
             this.getServer().getMessenger().unregisterOutgoingPluginChannel(this, "zander:hub");
         }
+        if (portalRenderer != null) {
+            portalRenderer.removeAllTints();
+        }
         bridgeClient = null;
+        portalRenderer = null;
         portalService = null;
         portalSessions = null;
         plugin = null;

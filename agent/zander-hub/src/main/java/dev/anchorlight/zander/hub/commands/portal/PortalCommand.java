@@ -2,12 +2,16 @@ package dev.anchorlight.zander.hub.commands.portal;
 
 import dev.anchorlight.zander.hub.ConfigurationManager;
 import dev.anchorlight.zander.hub.ZanderHubMain;
+import dev.anchorlight.zander.hub.bridge.BridgeMessage;
 import dev.anchorlight.zander.hub.portal.LocationPortalDestination;
 import dev.anchorlight.zander.hub.portal.Portal;
+import dev.anchorlight.zander.hub.portal.PortalAppearance;
 import dev.anchorlight.zander.hub.portal.PortalRegion;
+import dev.anchorlight.zander.hub.portal.PortalRenderer;
 import dev.anchorlight.zander.hub.portal.PortalService;
 import dev.anchorlight.zander.hub.portal.ServerPortalDestination;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -25,14 +29,16 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
     private static final MiniMessage MM = MiniMessage.miniMessage();
     private static final List<String> SUBCOMMANDS = List.of("wand", "create", "delete", "list", "info", "enable",
             "disable", "setserver", "setlocation", "setpermission", "setdisplay", "setcooldown", "setsound",
-            "reload", "tp");
+            "setstyle", "setcolour", "reload", "tp", "send");
 
     private final PortalService portalService;
     private final PortalSelectionManager selections;
+    private final PortalRenderer renderer;
 
-    public PortalCommand(PortalService portalService, PortalSelectionManager selections) {
+    public PortalCommand(PortalService portalService, PortalSelectionManager selections, PortalRenderer renderer) {
         this.portalService = portalService;
         this.selections = selections;
+        this.renderer = renderer;
     }
 
     private void msg(CommandSender sender, String message) {
@@ -62,8 +68,11 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
             case "setdisplay" -> handleSetDisplay(sender, rest);
             case "setcooldown" -> handleSetCooldown(sender, rest);
             case "setsound" -> handleSetSound(sender, rest);
+            case "setstyle" -> handleSetStyle(sender, rest);
+            case "setcolour", "setcolor" -> handleSetColour(sender, rest);
             case "reload" -> handleReload(sender);
             case "tp" -> handleTp(sender, rest);
+            case "send" -> handleSend(sender, rest);
             default -> msg(sender, "<red>Unknown subcommand: " + sub + "</red>");
         }
         return true;
@@ -164,6 +173,8 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         msg(sender, "<gray>Destination: " + portal.destination() + "</gray>");
         msg(sender, "<gray>Permission: " + (portal.permission() == null ? "none" : portal.permission()) + "</gray>");
         msg(sender, "<gray>Cooldown: " + portal.cooldownMs() + "ms</gray>");
+        msg(sender, "<gray>Appearance: " + portal.appearance().style().name().toLowerCase(java.util.Locale.ROOT)
+                + " (colour " + PortalAppearance.formatColour(portal.appearance().argb()) + ")</gray>");
     }
 
     private void handleEnable(CommandSender sender, String[] args, boolean enabled) {
@@ -232,7 +243,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         Portal existing = found.get();
         portalService.put(new Portal(existing.id(), existing.displayName(), existing.enabled(), existing.region(),
                 existing.destination(), permission, existing.cooldownMs(), existing.sound(),
-                existing.successMessage(), existing.deniedMessage()));
+                existing.successMessage(), existing.deniedMessage(), existing.appearance()));
         msg(sender, "<green>Portal '" + existing.id() + "' permission set to " + (permission == null ? "none" : permission) + ".</green>");
     }
 
@@ -250,7 +261,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         Portal existing = found.get();
         portalService.put(new Portal(existing.id(), display, existing.enabled(), existing.region(),
                 existing.destination(), existing.permission(), existing.cooldownMs(), existing.sound(),
-                existing.successMessage(), existing.deniedMessage()));
+                existing.successMessage(), existing.deniedMessage(), existing.appearance()));
         msg(sender, "<green>Portal '" + existing.id() + "' display name updated.</green>");
     }
 
@@ -275,7 +286,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         try {
             portalService.put(new Portal(existing.id(), existing.displayName(), existing.enabled(), existing.region(),
                     existing.destination(), existing.permission(), cooldownMs, existing.sound(),
-                    existing.successMessage(), existing.deniedMessage()));
+                    existing.successMessage(), existing.deniedMessage(), existing.appearance()));
             msg(sender, "<green>Portal '" + existing.id() + "' cooldown set to " + cooldownMs + "ms.</green>");
         } catch (IllegalArgumentException e) {
             msg(sender, "<red>" + e.getMessage() + "</red>");
@@ -304,8 +315,68 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         Portal existing = found.get();
         portalService.put(new Portal(existing.id(), existing.displayName(), existing.enabled(), existing.region(),
                 existing.destination(), existing.permission(), existing.cooldownMs(), sound,
-                existing.successMessage(), existing.deniedMessage()));
+                existing.successMessage(), existing.deniedMessage(), existing.appearance()));
         msg(sender, "<green>Portal '" + existing.id() + "' sound updated.</green>");
+    }
+
+    private void handleSetStyle(CommandSender sender, String[] args) {
+        if (!requirePermission(sender, "zanderhub.portal.edit") || args.length != 2) {
+            if (args.length != 2) msg(sender, "<red>Usage: /zportal setstyle <id> <none|nether|tint></red>");
+            return;
+        }
+        Optional<Portal> found = portalService.find(args[0]);
+        if (found.isEmpty()) {
+            msg(sender, "<red>No such portal: " + args[0] + "</red>");
+            return;
+        }
+        Optional<PortalAppearance.Style> style = PortalAppearance.parseStyle(args[1]);
+        if (style.isEmpty()) {
+            msg(sender, "<red>Unknown style: " + args[1] + ". Use none, nether or tint.</red>");
+            return;
+        }
+        applyAppearance(sender, found.get(), found.get().appearance().withStyle(style.get()));
+    }
+
+    private void handleSetColour(CommandSender sender, String[] args) {
+        if (!requirePermission(sender, "zanderhub.portal.edit") || args.length != 2) {
+            if (args.length != 2) msg(sender, "<red>Usage: /zportal setcolour <id> <#RRGGBB|#AARRGGBB|colour-name></red>");
+            return;
+        }
+        Optional<Portal> found = portalService.find(args[0]);
+        if (found.isEmpty()) {
+            msg(sender, "<red>No such portal: " + args[0] + "</red>");
+            return;
+        }
+        Optional<Integer> argb = PortalAppearance.parseColour(args[1]);
+        if (argb.isEmpty()) {
+            msg(sender, "<red>Invalid colour: " + args[1] + ". Use #RRGGBB, #AARRGGBB or a dye colour name.</red>");
+            return;
+        }
+        // Nether portal blocks can't be recoloured, so choosing a colour switches the portal to a tint.
+        applyAppearance(sender, found.get(), new PortalAppearance(PortalAppearance.Style.TINT, argb.get()));
+    }
+
+    private void applyAppearance(CommandSender sender, Portal existing, PortalAppearance appearance) {
+        if (appearance.style() == PortalAppearance.Style.NETHER
+                && existing.region().volume() > PortalRenderer.MAX_NETHER_VOLUME) {
+            msg(sender, "<red>Portal '" + existing.id() + "' is too large for the nether style ("
+                    + existing.region().volume() + " blocks, max " + PortalRenderer.MAX_NETHER_VOLUME + ").</red>");
+            return;
+        }
+        portalService.put(existing.withAppearance(appearance));
+
+        String description = switch (appearance.style()) {
+            case NONE -> "invisible";
+            case NETHER -> "a nether portal";
+            case TINT -> "a " + PortalAppearance.formatColour(appearance.argb()) + " tint";
+        };
+        msg(sender, "<green>Portal '" + existing.id() + "' is now " + description + ".</green>");
+        if (appearance.style() == PortalAppearance.Style.NETHER) {
+            int occupied = renderer.countOccupied(existing.region());
+            if (occupied > 0) {
+                msg(sender, "<yellow>" + occupied + " block(s) in the region were already occupied and left untouched.</yellow>");
+            }
+        }
     }
 
     private void handleReload(CommandSender sender) {
@@ -348,6 +419,51 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         msg(player, "<green>Teleported to portal '" + found.get().id() + "'.</green>");
     }
 
+    private void handleSend(CommandSender sender, String[] args) {
+        if (!requirePermission(sender, "zanderhub.portal.send")) {
+            return;
+        }
+        if (args.length < 1 || args.length > 2 || (args.length == 1 && !(sender instanceof Player))) {
+            msg(sender, "<red>Usage: /zportal send <server-id> [player]</red>");
+            return;
+        }
+        String serverId = args[0];
+        Player target = args.length == 2 ? Bukkit.getPlayerExact(args[1]) : (Player) sender;
+        if (target == null) {
+            msg(sender, "<red>Player '" + args[1] + "' is not online on this server.</red>");
+            return;
+        }
+        if (ZanderHubMain.bridgeClient == null) {
+            msg(sender, "<red>The Velocity bridge is not available.</red>");
+            return;
+        }
+
+        boolean self = target.equals(sender);
+        msg(sender, "<yellow>Sending " + (self ? "you" : target.getName()) + " to " + serverId + "...</yellow>");
+        // Velocity performs the transfer over the target's own connection and enforces their server access.
+        ZanderHubMain.bridgeClient.sendConnectRequest(target, "", serverId)
+                .whenComplete((response, error) -> Bukkit.getScheduler().runTask(ZanderHubMain.plugin, () -> {
+                    String result;
+                    if (error != null) {
+                        result = "<red>Failed to send " + target.getName() + " to " + serverId + ": no response from Velocity.</red>";
+                    } else {
+                        result = switch (response) {
+                            case BridgeMessage.ConnectStarted ignored ->
+                                    "<green>Connecting " + target.getName() + " to " + serverId + ".</green>";
+                            case BridgeMessage.ConnectDenied denied -> "<red>" + denied.reason() + "</red>";
+                            case BridgeMessage.ConnectFailed failed -> "<red>" + failed.reason() + "</red>";
+                            default -> "<red>Unexpected response from Velocity.</red>";
+                        };
+                    }
+                    if (!(sender instanceof Player player) || player.isOnline()) {
+                        msg(sender, result);
+                    }
+                    if (!self && target.isOnline() && response instanceof BridgeMessage.ConnectStarted) {
+                        msg(target, "<yellow>You are being sent to " + serverId + "...</yellow>");
+                    }
+                }));
+    }
+
     private static Portal withDestination(Portal existing, dev.anchorlight.zander.hub.portal.PortalDestination destination) {
         return new Portal(existing.id(), existing.displayName(), existing.enabled(), existing.region(), destination,
                 existing.permission(), existing.cooldownMs(), existing.sound(),
@@ -362,26 +478,46 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             switch (args[0].toLowerCase(java.util.Locale.ROOT)) {
                 case "delete", "info", "enable", "disable", "setserver", "setlocation", "setpermission",
-                        "setdisplay", "setcooldown", "setsound", "tp" -> {
+                        "setdisplay", "setcooldown", "setsound", "setstyle", "setcolour", "setcolor", "tp" -> {
                     List<String> ids = new ArrayList<>();
                     for (Portal portal : portalService.all()) {
                         ids.add(portal.id());
                     }
                     return prefixMatch(ids, args[1]);
                 }
+                case "send" -> {
+                    return prefixMatch(compassServerIds(), args[1]);
+                }
                 default -> {
                     return List.of();
                 }
             }
         }
-        if (args.length == 3 && args[0].equalsIgnoreCase("setserver")) {
-            List<String> serverIds = new ArrayList<>();
-            for (var entry : ConfigurationManager.getCompass().getServers()) {
-                serverIds.add(entry.id());
+        if (args.length == 3 && args[0].equalsIgnoreCase("send")) {
+            List<String> names = new ArrayList<>();
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                names.add(online.getName());
             }
-            return prefixMatch(serverIds, args[2]);
+            return prefixMatch(names, args[2]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("setstyle")) {
+            return prefixMatch(List.of("none", "nether", "tint"), args[2]);
+        }
+        if (args.length == 3 && (args[0].equalsIgnoreCase("setcolour") || args[0].equalsIgnoreCase("setcolor"))) {
+            return prefixMatch(new ArrayList<>(PortalAppearance.colourNames()), args[2]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("setserver")) {
+            return prefixMatch(compassServerIds(), args[2]);
         }
         return List.of();
+    }
+
+    private static List<String> compassServerIds() {
+        List<String> serverIds = new ArrayList<>();
+        for (var entry : ConfigurationManager.getCompass().getServers()) {
+            serverIds.add(entry.id());
+        }
+        return serverIds;
     }
 
     private static List<String> prefixMatch(List<String> options, String prefix) {

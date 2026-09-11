@@ -8,7 +8,7 @@ import java.util.Objects;
  */
 public record Portal(String id, String displayName, boolean enabled, PortalRegion region,
         PortalDestination destination, String permission, long cooldownMs, String sound,
-        String successMessage, String deniedMessage) {
+        String successMessage, String deniedMessage, PortalAppearance appearance) {
     public Portal {
         if (!PortalIdValidator.isValid(id)) {
             throw new IllegalArgumentException("Invalid portal id: " + id);
@@ -21,5 +21,21 @@ public record Portal(String id, String displayName, boolean enabled, PortalRegio
         if (cooldownMs < 0) {
             throw new IllegalArgumentException("cooldownMs must not be negative: " + cooldownMs);
         }
+        if (appearance == null) {
+            appearance = PortalAppearance.NONE;
+        }
+    }
+
+    /// Creates an invisible portal (no rendered appearance).
+    public Portal(String id, String displayName, boolean enabled, PortalRegion region,
+            PortalDestination destination, String permission, long cooldownMs, String sound,
+            String successMessage, String deniedMessage) {
+        this(id, displayName, enabled, region, destination, permission, cooldownMs, sound,
+                successMessage, deniedMessage, PortalAppearance.NONE);
+    }
+
+    public Portal withAppearance(PortalAppearance newAppearance) {
+        return new Portal(id, displayName, enabled, region, destination, permission, cooldownMs, sound,
+                successMessage, deniedMessage, newAppearance);
     }
 }

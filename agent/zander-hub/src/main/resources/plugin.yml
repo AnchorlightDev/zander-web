@@ -14,7 +14,7 @@ commands:
     usage: /connect <server>
   zportal:
     description: Manage custom Hub portals.
-    usage: /zportal <wand|create|delete|list|info|enable|disable|setserver|setlocation|setpermission|setdisplay|setcooldown|setsound|reload|tp> [args]
+    usage: /zportal <wand|create|delete|list|info|enable|disable|setserver|setlocation|setpermission|setdisplay|setcooldown|setsound|setstyle|setcolour|reload|tp|send> [args]
     aliases: [portaladmin]
 
 permissions:
@@ -43,4 +43,6 @@ permissions:
   zanderhub.portal.reload:
     default: op
   zanderhub.portal.teleport:
+    default: op
+  zanderhub.portal.send:
     default: op

@@ -105,8 +105,23 @@ public class PortalRepository {
         String successMessage = section.getString("messages.success", "");
         String deniedMessage = section.getString("messages.denied", "");
 
+        PortalAppearance appearance = parseAppearance(section.getConfigurationSection("appearance"));
+
         return new Portal(rawId, displayName, enabled, region, destination, permission,
-                cooldownMs, sound, successMessage, deniedMessage);
+                cooldownMs, sound, successMessage, deniedMessage, appearance);
+    }
+
+    private static PortalAppearance parseAppearance(ConfigurationSection section) {
+        if (section == null) {
+            return PortalAppearance.NONE;
+        }
+        String rawStyle = section.getString("style", "NONE");
+        PortalAppearance.Style style = PortalAppearance.parseStyle(rawStyle)
+                .orElseThrow(() -> new IllegalArgumentException("unknown appearance style '" + rawStyle + "'"));
+        String rawColour = section.getString("colour");
+        int argb = rawColour == null ? PortalAppearance.DEFAULT_TINT : PortalAppearance.parseColour(rawColour)
+                .orElseThrow(() -> new IllegalArgumentException("invalid appearance colour '" + rawColour + "'"));
+        return new PortalAppearance(style, argb);
     }
 
     private static final java.util.regex.Pattern VALID_SOUND_NAME = java.util.regex.Pattern.compile("^[A-Z0-9_]+$");
@@ -182,6 +197,8 @@ public class PortalRepository {
             yaml.set(base + ".sound", portal.sound());
             yaml.set(base + ".messages.success", portal.successMessage());
             yaml.set(base + ".messages.denied", portal.deniedMessage());
+            yaml.set(base + ".appearance.style", portal.appearance().style().name());
+            yaml.set(base + ".appearance.colour", PortalAppearance.formatColour(portal.appearance().argb()));
         }
 
         try {

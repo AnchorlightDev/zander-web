@@ -36,7 +36,7 @@ public class PortalBlockProtection implements Listener {
 
     /// A placement only counts as overwriting when it changes a block that isn't
     /// empty space.
-    static boolean wouldOverwrite(Material existing, Material planned) {
+    public static boolean wouldOverwrite(Material existing, Material planned) {
         return existing != planned && !EMPTY.contains(existing);
     }
 }
