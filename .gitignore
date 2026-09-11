@@ -8,3 +8,5 @@ google.json
 features.json
 *.log
 graphify-out
+.idea/
+target/

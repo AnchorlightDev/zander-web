@@ -27,6 +27,7 @@ import dev.anchorlight.zander.hub.portal.PortalTransitionDetector;
 import dev.anchorlight.zander.hub.protection.HubCreatureSpawnProtection;
 import dev.anchorlight.zander.hub.protection.HubInteractionProtection;
 import dev.anchorlight.zander.hub.protection.HubProtection;
+import dev.anchorlight.zander.hub.protection.PortalBlockProtection;
 import dev.anchorlight.zander.hub.protection.dimension.DimensionProtectionListener;
 import dev.anchorlight.zander.hub.utils.CopyResources;
 
@@ -91,6 +92,7 @@ public class ZanderHubMain extends JavaPlugin {
         pluginmanager.registerEvents(new HubInteractionProtection(this), this);
         pluginmanager.registerEvents(new HubCreatureSpawnProtection(this), this);
         pluginmanager.registerEvents(new DimensionProtectionListener(this), this);
+        pluginmanager.registerEvents(new PortalBlockProtection(), this);
 
         // Item Event Registry
         pluginmanager.registerEvents(new HubCompassItem(), this);
