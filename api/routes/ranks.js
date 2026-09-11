@@ -5,6 +5,7 @@ import {
 } from "../../controllers/userController.js";
 import { luckpermsDb } from "../../controllers/databaseController.js";
 import { syncMemberRankRoles } from "../../lib/discord/rankRoleSync.mjs";
+import { syncAllRanks, syncUserRanks } from "../../controllers/rankSyncController.js";
 
 const LUCKPERMS_PLAYERS_TABLE = "luckperms_players";
 const LUCKPERMS_GROUP_PERMISSIONS_TABLE = "luckperms_group_permissions";
@@ -529,6 +530,7 @@ export default function rankApiRoute(app, config, db, features, lang) {
       await updateGroupNode(rankSlug, "meta.donator", donatorFlag);
       await updateGroupNode(rankSlug, "meta.rankbadgecolour", sanitizedBadge);
       await updateGroupNode(rankSlug, "meta.ranktextcolour", sanitizedText);
+      await syncAllRanks();
 
       const [updatedRank] = await queryLuckPermsDb(
         `SELECT
@@ -686,6 +688,8 @@ export default function rankApiRoute(app, config, db, features, lang) {
         );
       }
 
+      await syncUserRanks(player.uuid);
+
       if (player.userId) {
         await syncMemberRankRoles(player.userId);
       }
@@ -742,6 +746,8 @@ export default function rankApiRoute(app, config, db, features, lang) {
             AND permission LIKE CONCAT('meta.group.', ?, '.title.%')`,
         [player.uuid, rankSlug]
       );
+
+      await syncUserRanks(player.uuid);
 
       if (player.userId && result?.affectedRows > 0) {
         await syncMemberRankRoles(player.userId);

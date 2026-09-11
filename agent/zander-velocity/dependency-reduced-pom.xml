@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <parent>
+    <artifactId>zander</artifactId>
+    <groupId>dev.anchorlight</groupId>
+    <version>1.4.0</version>
+  </parent>
   <modelVersion>4.0.0</modelVersion>
-  <groupId>org.modularsoft</groupId>
   <artifactId>zander-velocity</artifactId>
   <name>zander-velocity</name>
-  <version>1.2.0</version>
   <build>
     <resources>
       <resource>
@@ -17,12 +20,23 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.11.0</version>
         <configuration>
-          <release>17</release>
+          <release>25</release>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>1.18.42</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
       <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+      </plugin>
+      <plugin>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.4.1</version>
+        <version>3.6.2</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -34,6 +48,13 @@
         <configuration>
           <filters>
             <filter>
+              <artifact>dev.anchorlight:StoneLib</artifact>
+              <includes>
+                <include>dev/anchorlight/stonelib/cooldown/RateLimiter*</include>
+                <include>dev/anchorlight/stonelib/vanish/proxy/**</include>
+              </includes>
+            </filter>
+            <filter>
               <artifact>*:*</artifact>
               <excludes>
                 <exclude>META-INF/*.MF</exclude>
@@ -42,8 +63,12 @@
           </filters>
           <relocations>
             <relocation>
+              <pattern>dev.anchorlight.stonelib</pattern>
+              <shadedPattern>dev.anchorlight.zander.velocity.libs.stonelib</shadedPattern>
+            </relocation>
+            <relocation>
               <pattern>dev.dejvokep.boostedyaml</pattern>
-              <shadedPattern>org.modularsoft.zander.velocity.libs</shadedPattern>
+              <shadedPattern>dev.anchorlight.zander.velocity.libs</shadedPattern>
             </relocation>
           </relocations>
         </configuration>
@@ -63,6 +88,10 @@
       <id>jitpack.io</id>
       <url>https://jitpack.io</url>
     </repository>
+    <repository>
+      <id>luckperms-repo</id>
+      <url>https://repo.lucko.me/</url>
+    </repository>
   </repositories>
   <dependencies>
     <dependency>
@@ -71,11 +100,43 @@
       <version>3.4.0-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>net.luckperms</groupId>
+      <artifactId>api</artifactId>
+      <version>5.4</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>net.kyori</groupId>
+      <artifactId>adventure-text-minimessage</artifactId>
+      <version>4.17.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.2</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>junit-jupiter-api</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>junit-jupiter-params</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>junit-jupiter-engine</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
   <properties>
-    <maven.compiler.target>17</maven.compiler.target>
-    <java.version>17</java.version>
-    <maven.compiler.source>17</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.target>25</maven.compiler.target>
+    <java.version>25</java.version>
+    <maven.compiler.source>25</maven.compiler.source>
   </properties>
 </project>
