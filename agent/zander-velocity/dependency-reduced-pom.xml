@@ -52,6 +52,8 @@
               <includes>
                 <include>dev/anchorlight/stonelib/cooldown/RateLimiter*</include>
                 <include>dev/anchorlight/stonelib/vanish/proxy/**</include>
+                <include>dev/anchorlight/stonelib/http/Request*</include>
+                <include>dev/anchorlight/stonelib/http/Response*</include>
               </includes>
             </filter>
             <filter>

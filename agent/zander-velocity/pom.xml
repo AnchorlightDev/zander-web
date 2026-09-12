@@ -60,6 +60,8 @@
                             <includes>
                                 <include>dev/anchorlight/stonelib/cooldown/RateLimiter*</include>
                                 <include>dev/anchorlight/stonelib/vanish/proxy/**</include>
+                                <include>dev/anchorlight/stonelib/http/Request*</include>
+                                <include>dev/anchorlight/stonelib/http/Response*</include>
                             </includes>
                         </filter>
                         <filter>
@@ -112,7 +114,7 @@
     </repositories>
 
     <dependencies>
-        <!-- StoneLib: only its Bukkit-free classes (RateLimiter, ProxyVanishStatus) are used on the proxy. -->
+        <!-- StoneLib: only its Bukkit-free classes (RateLimiter, ProxyVanishStatus, http Request/Response) are used on the proxy. -->
         <dependency>
             <groupId>dev.anchorlight</groupId>
             <artifactId>StoneLib</artifactId>
@@ -142,11 +144,6 @@
             <artifactId>lombok</artifactId>
             <version>1.18.42</version>
             <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.github.ModularEnigma</groupId>
-            <artifactId>Requests</artifactId>
-            <version>1.0.3</version>
         </dependency>
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
