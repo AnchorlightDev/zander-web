@@ -28,7 +28,8 @@ public class ZanderAuthMain extends JavaPlugin {
         pluginmanager.registerEvents(new AuthPlayerJoin(this), this);
         pluginmanager.registerEvents(new UserOnServerPing(), this);
 
-        saveConfig();
+        // Writes the bundled config.yml on first run. saveConfig() here wrote an empty file.
+        saveDefaultConfig();
     }
 
     @Override

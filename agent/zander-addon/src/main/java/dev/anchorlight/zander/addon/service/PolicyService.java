@@ -1,8 +1,8 @@
 package dev.anchorlight.zander.addon.service;
 
 import com.jayway.jsonpath.JsonPath;
-import io.github.ModularEnigma.Request;
-import io.github.ModularEnigma.Response;
+import dev.anchorlight.stonelib.http.Request;
+import dev.anchorlight.stonelib.http.Response;
 import com.google.gson.reflect.TypeToken;
 import dev.anchorlight.zander.addon.ZanderAddonMain;
 import dev.anchorlight.zander.addon.model.PolicyConfig;

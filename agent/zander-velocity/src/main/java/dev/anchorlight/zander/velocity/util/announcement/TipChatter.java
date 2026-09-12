@@ -2,8 +2,8 @@ package dev.anchorlight.zander.velocity.util.announcement;
 
 import com.jayway.jsonpath.JsonPath;
 import dev.dejvokep.boostedyaml.route.Route;
-import io.github.ModularEnigma.Request;
-import io.github.ModularEnigma.Response;
+import dev.anchorlight.stonelib.http.Request;
+import dev.anchorlight.stonelib.http.Response;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
